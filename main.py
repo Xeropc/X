@@ -3,11 +3,11 @@ from discord.ext import commands, tasks
 import os
 import requests
 import threading
+from flask import Flask
 import time
 import asyncio
 
-# === Keep Alive Webserver + Self-Pinger ===
-from flask import Flask
+# === Keep Alive Webserver ===
 app = Flask('')
 
 @app.route('/')
@@ -20,12 +20,16 @@ def run_server():
     app.run(host='0.0.0.0', port=port)
 
 def keep_alive():
+    # Start Flask webserver in a thread
     t = threading.Thread(target=run_server)
     t.daemon = True
     t.start()
-
+    
+    # Optional: external self-ping (UptimeRobot or similar recommended)
     def auto_ping():
-        url = "https://b201675c-f07f-4c3f-845c-ad88999fb713-00-2e2f8ewjtjgu5.riker.replit.dev/"
+        url = os.environ.get("PING_URL")  # set this in your host if needed
+        if not url:
+            return
         while True:
             try:
                 requests.get(url)
@@ -33,30 +37,26 @@ def keep_alive():
             except Exception as e:
                 print("⚠️ Ping failed:", e)
             time.sleep(300)
-
+    
     pinger = threading.Thread(target=auto_ping)
     pinger.daemon = True
     pinger.start()
 
 # === Discord Bot ===
 intents = discord.Intents.default()
-intents.message_content = True  # allow reading messages for commands
+intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
-    
-    # Short pause to ensure bot is fully connected
+    # Small delay to ensure connection fully establishes
     await asyncio.sleep(2)
     
     # Set activity status
-    activity = discord.Activity(
-        type=discord.ActivityType.watching,  # non-clickable
-        name="Servers"
-    )
+    activity = discord.Activity(type=discord.ActivityType.watching, name="Servers")
     await bot.change_presence(status=discord.Status.online, activity=activity)
-    print("🎮 Activity status set to 'Watching Servers'!")
+    print("🎮 Activity status set! Watching Servers")
 
     # Start any background tasks
     try:
@@ -170,6 +170,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
