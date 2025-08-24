@@ -59,6 +59,7 @@ raid_stats = {"raids_blocked": 0, "suspicious_flagged": 0}  # Can be updated man
 
 @bot.command()
 async def status(ctx):
+    await ctx.message.delete()
     msg = (
         f"🛡️ **Server Health Dashboard**\n"
         f"Raids Blocked: {raid_stats['raids_blocked']}\n"
@@ -90,3 +91,4 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
