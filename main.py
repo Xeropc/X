@@ -4,6 +4,7 @@ import os
 import requests
 import threading
 import time
+import asyncio
 
 # === Keep Alive Webserver + Self-Pinger ===
 from flask import Flask
@@ -45,12 +46,24 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
+    
+    # Short pause to ensure bot is fully connected
+    await asyncio.sleep(2)
+    
+    # Set activity status
     activity = discord.Activity(
-        type=discord.ActivityType.watching,
+        type=discord.ActivityType.watching,  # non-clickable
         name="Servers"
     )
     await bot.change_presence(status=discord.Status.online, activity=activity)
-    print("🎮 Activity status set!")
+    print("🎮 Activity status set to 'Watching Servers'!")
+
+    # Start any background tasks
+    try:
+        decay_reputation.start()
+        print("🟢 Reputation decay loop started!")
+    except Exception as e:
+        print(f"⚠️ Could not start decay loop: {e}")
 
 # === Reputation System ===
 reputation = {}         # Stores current reputation
@@ -157,6 +170,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
