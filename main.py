@@ -63,8 +63,7 @@ async def rep(ctx, member: discord.Member = None):
     await ctx.message.delete()
     member = member or ctx.author
     score = reputation.get(member.id, 100)
-    await ctx.send(f"📊 **Reputation for {member.display_name}:** {score}")
-    await ctx.send(message, delete_after=7)
+    await ctx.send(f"📊 **Reputation for {member.display_name}:** {score}", delete_after=4)
 
 # === Status Dashboard ===
 raid_stats = {"raids_blocked": 0, "suspicious_flagged": 0}  # Can be updated manually if needed
@@ -99,7 +98,7 @@ async def x(ctx):
 async def cmds_list(ctx):
     embed = discord.Embed(
         title="📜 XERO Bot Commands",
-        description="Here are the commands you can use:",
+        description="Here are the list of commands you can use:",
         color=discord.Color.blurple()
     )
     embed.add_field(name="🛡️ !x", value="Shows DDoS protection status", inline=False)
@@ -118,6 +117,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
