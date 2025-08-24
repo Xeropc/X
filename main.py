@@ -51,6 +51,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
+    # Wait a tiny bit to ensure bot is fully ready
+    await asyncio.sleep(2)
+
     # Set activity status
     activity = discord.Activity(
         type=discord.ActivityType.watching,  # "Watching Servers"
@@ -59,12 +62,10 @@ async def on_ready():
     await bot.change_presence(status=discord.Status.online, activity=activity)
     print("🎮 Activity status set!")
 
-    # Start any background tasks
-    try:
+    # Start reputation decay task if not already running
+    if not decay_reputation.is_running():
         decay_reputation.start()
         print("⏳ Reputation decay task started!")
-    except Exception as e:
-        print(f"⚠️ Failed to start decay_reputation task: {e}")
         
 # === Reputation System ===
 reputation = {}         # Stores current reputation
@@ -101,12 +102,6 @@ async def decay_reputation():
         # Decay 5 points for every 30 minutes of inactivity
         if now - last > 1800:
             reputation[user_id] = max(reputation[user_id] - 5, 100)
-
-# Start the decay loop when bot is ready
-@bot.event
-async def on_ready():
-    print(f"✅ Logged in as {bot.user}")
-    decay_reputation.start()
 
 # Command to check reputation
 @bot.command()
@@ -171,14 +166,3 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
-
-
-
-
-
-
-
-
-
-
-
