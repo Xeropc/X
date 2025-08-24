@@ -97,7 +97,7 @@ async def on_ready():
 # Command to check reputation
 @bot.command()
 async def rep(ctx, member: discord.Member = None):
-    await ctx.message.delete(delay=3)
+    await ctx.message.delete()
     member = member or ctx.author
     score = reputation.get(member.id, 100)
     await ctx.send(f"📊 **Reputation for {member.display_name}:** {score}", delete_after=7)
@@ -133,8 +133,7 @@ async def x(ctx):
 
 @bot.command(name="cmds")
 async def cmds_list(ctx):
-    # Delete the user's command after 3 seconds
-    await ctx.message.delete(delay=3)
+    await ctx.message.delete()
 
     embed = discord.Embed(
         title="📜 XERO Bot Commands",
@@ -148,7 +147,7 @@ async def cmds_list(ctx):
     embed.add_field(name="📜 !cmds", value="Displays this command list", inline=False)
 
     # Send the embed and delete it after 7 seconds
-    await ctx.send(embed=embed, delete_after=7)
+    await ctx.send(embed=embed, delete_after=15)
 
 # === Start Everything ===
 keep_alive()
@@ -158,6 +157,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
