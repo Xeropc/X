@@ -60,9 +60,11 @@ def adjust_reputation(user_id, amount):
 
 @bot.command()
 async def rep(ctx, member: discord.Member = None):
+    await ctx.message.delete()
     member = member or ctx.author
     score = reputation.get(member.id, 100)
     await ctx.send(f"📊 **Reputation for {member.display_name}:** {score}")
+    await ctx.send(message, delete_after=7)
 
 # === Status Dashboard ===
 raid_stats = {"raids_blocked": 0, "suspicious_flagged": 0}  # Can be updated manually if needed
@@ -93,6 +95,21 @@ async def x(ctx):
     )
     await ctx.send(message, delete_after=4)
 
+@bot.command(name="cmds")
+async def cmds_list(ctx):
+    embed = discord.Embed(
+        title="📜 XERO Bot Commands",
+        description="Here are the commands you can use:",
+        color=discord.Color.blurple()
+    )
+    embed.add_field(name="🛡️ !x", value="Shows DDoS protection status", inline=False)
+    embed.add_field(name="📊 !rep", value="Check a member's reputation", inline=False)
+    embed.add_field(name="📈 !status", value="Server health dashboard", inline=False)
+    embed.add_field(name="💬 !ping", value="Check if the bot is awake", inline=False)
+    embed.add_field(name="📜 !cmds", value="Displays this command list", inline=False)
+    
+    await ctx.send(embed=embed)
+
 # === Start Everything ===
 keep_alive()
 
@@ -101,5 +118,6 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
