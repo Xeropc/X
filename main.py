@@ -39,8 +39,18 @@ def keep_alive():
 
 # === Discord Bot ===
 intents = discord.Intents.default()
-intents.message_content = True
+intents.message_content = True  # allow reading messages for commands
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+
+    activity = discord.Activity(
+        type=discord.ActivityType.watching,   # non-clickable
+        name="Servers"
+    )
+    await bot.change_presence(status=discord.Status.online, activity=activity)
 
 # === Reputation System ===
 reputation = {}
@@ -91,4 +101,5 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
