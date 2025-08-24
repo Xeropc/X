@@ -155,8 +155,8 @@ async def cmds_list(ctx):
     embed.add_field(name="💬 !ping", value="Check if the bot is awake", inline=False)
     embed.add_field(name="📜 !cmds", value="Displays this command list", inline=False)
 
-    # Send the embed and delete it after 7 seconds
-    await ctx.send(embed=embed, delete_after=15)
+    # Send the embed and delete it after 25 seconds
+    await ctx.send(embed=embed, delete_after=25)
 
 # === Start Everything ===
 keep_alive()
@@ -166,3 +166,4 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
