@@ -50,21 +50,22 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
-    # Small delay to ensure connection fully establishes
-    await asyncio.sleep(2)
-    
+
     # Set activity status
-    activity = discord.Activity(type=discord.ActivityType.watching, name="Servers")
+    activity = discord.Activity(
+        type=discord.ActivityType.watching,  # "Watching Servers"
+        name="Servers"
+    )
     await bot.change_presence(status=discord.Status.online, activity=activity)
-    print("🎮 Activity status set! Watching Servers")
+    print("🎮 Activity status set!")
 
     # Start any background tasks
     try:
         decay_reputation.start()
-        print("🟢 Reputation decay loop started!")
+        print("⏳ Reputation decay task started!")
     except Exception as e:
-        print(f"⚠️ Could not start decay loop: {e}")
-
+        print(f"⚠️ Failed to start decay_reputation task: {e}")
+        
 # === Reputation System ===
 reputation = {}         # Stores current reputation
 last_active = {}        # Tracks last activity timestamp
@@ -170,6 +171,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
