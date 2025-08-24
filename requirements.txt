@@ -1,2 +1,4 @@
 discord.py
-aiohttp
+requests
+Flask
+python-dotenv
