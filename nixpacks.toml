@@ -1,0 +1,18 @@
+[phases.setup]
+commands = [
+  "echo 'Using Python environment'"
+]
+
+[phases.install]
+commands = [
+  "pip install --upgrade pip",
+  "pip install -r requirements.txt"
+]
+
+[phases.build]
+commands = []
+
+[phases.start]
+commands = [
+  "python main.py"
+]
