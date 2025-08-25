@@ -80,51 +80,134 @@ async def play(ctx, *, query):
     if voice_client.is_playing():
         voice_client.stop()
 
+    # Show that we're searching
+    searching_msg = await ctx.send("🔍 Searching...")
+
+    # Optimized yt-dlp options - UPDATED for better compatibility
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
-        'default_search': 'ytsearch5',  # search top 5 results
         'quiet': True,
+        'no_warnings': True,
         'ignoreerrors': True,
+        'nocheckcertificate': True,
+        'cachedir': False,
+        'no_cache_dir': True,
+        'outtmpl': '-',
+        'logtostderr': False,
+        'verbose': False,
+        'simulate': True,
+        'skip_download': True,
+        'extract_flat': False,
+        # Force modern YouTube extractor
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+                'player_skip': ['configs', 'webpage', 'js']
+            }
+        },
+        # Better user agent for mobile compatibility
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
     try:
+        # Clean the query - remove special characters that might cause issues
+        clean_query = "".join(c for c in query if c.isalnum() or c in " -_")
+        
         # Extract video info asynchronously
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             loop = asyncio.get_running_loop()
-            func = functools.partial(ydl.extract_info, query, download=False)
-            info = await loop.run_in_executor(None, func)
+            
+            # Try different search approaches
+            try:
+                # First try: direct URL or standard search
+                func = functools.partial(ydl.extract_info, clean_query, download=False, process=False)
+                info = await loop.run_in_executor(None, func)
+            except Exception as e:
+                print(f"First search attempt failed: {e}")
+                # Second try: with different parameters
+                try:
+                    func = functools.partial(ydl.extract_info, f"ytsearch:{clean_query}", download=False)
+                    info = await loop.run_in_executor(None, func)
+                except Exception as e2:
+                    print(f"Second search attempt failed: {e2}")
+                    await searching_msg.edit(content="❌ Search failed. YouTube might be blocking requests.")
+                    return
 
         if not info:
-            await ctx.send("❌ Could not find any audio for that query.", delete_after=5)
+            await searching_msg.edit(content="❌ Could not find any audio for that query.")
             return
 
-        # Find first playable video
-        entries = info['entries'] if 'entries' in info else [info]
-        video = next((e for e in entries if e and e.get('url')), None)
+        # Handle different response formats
+        if 'entries' in info:
+            # This is a search result with multiple entries
+            video = next((e for e in info['entries'] if e), None)
+        else:
+            # This is a direct video result
+            video = info
 
         if not video:
-            await ctx.send("❌ No playable videos found.", delete_after=5)
+            await searching_msg.edit(content="❌ No playable videos found.")
             return
 
-        audio_url = video['url']
+        # For search results, we need to extract the actual URL
+        if 'url' not in video and 'webpage_url' in video:
+            # We need to extract the actual stream URL from the webpage
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
+                    func2 = functools.partial(ydl2.extract_info, video['webpage_url'], download=False)
+                    video_details = await loop.run_in_executor(None, func2)
+                    if video_details and 'url' in video_details:
+                        audio_url = video_details['url']
+                    else:
+                        audio_url = None
+            except:
+                audio_url = None
+        else:
+            audio_url = video.get('url')
+
+        if not audio_url:
+            await searching_msg.edit(content="❌ Could not get audio stream URL.")
+            return
+
         title = video.get('title', 'Unknown')
+        await searching_msg.edit(content=f"🎵 Found: **{title}**")
 
         # Stream audio directly
-        voice_client.play(
-            discord.FFmpegPCMAudio(
+        ffmpeg_options = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin',
+            'options': '-vn -filter:a "volume=0.8"'
+        }
+
+        ffmpeg_exec = ffmpeg.get_ffmpeg_exe()
+        
+        # Create the audio source with error handling
+        try:
+            audio_source = discord.FFmpegPCMAudio(
                 audio_url,
-                executable=ffmpeg.get_ffmpeg_exe(),
-                options='-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
-            ),
-            after=lambda e: print(f"Finished playing: {e}")
+                executable=ffmpeg_exec,
+                **ffmpeg_options
+            )
+        except Exception as e:
+            await searching_msg.edit(content="❌ Failed to create audio stream.")
+            print(f"FFmpeg error: {e}")
+            return
+
+        # Play the audio
+        voice_client.play(
+            audio_source,
+            after=lambda e: print(f"Finished playing: {e if e else 'Success'}")
         )
 
-        await ctx.send(f"▶️ Now playing: **{title}**", delete_after=10)
+        await ctx.send(f"▶️ Now playing: **{title}**", delete_after=15)
 
     except Exception as e:
-        await ctx.send(f"❌ Error playing audio: {e}", delete_after=5)
-        print("Error in play command:", e)
+        error_msg = f"❌ Error: {str(e)}"
+        print("Full error in play command:", e)
+        try:
+            await searching_msg.edit(content=error_msg)
+        except:
+            await ctx.send(error_msg[:100] + "...", delete_after=10)
         
 # === Commands ===
 
@@ -349,3 +432,4 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
