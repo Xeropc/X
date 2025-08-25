@@ -83,88 +83,44 @@ async def play(ctx, *, query):
     # Show that we're searching
     searching_msg = await ctx.send("🔍 Searching...")
 
-    # Optimized yt-dlp options - UPDATED for better compatibility
+    # SIMPLIFIED yt-dlp options
     ydl_opts = {
         'format': 'bestaudio/best',
-        'default_search': 'ytsearch',
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
         'ignoreerrors': True,
-        'nocheckcertificate': True,
-        'cachedir': False,
-        'no_cache_dir': True,
-        'outtmpl': '-',
-        'logtostderr': False,
-        'verbose': False,
-        'simulate': True,
-        'skip_download': True,
-        'extract_flat': False,
-        # Force modern YouTube extractor
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web'],
-                'player_skip': ['configs', 'webpage', 'js']
-            }
-        },
-        # Better user agent for mobile compatibility
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
     try:
-        # Clean the query - remove special characters that might cause issues
-        clean_query = "".join(c for c in query if c.isalnum() or c in " -_")
-        
-        # Extract video info asynchronously
+        # Extract video info
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             loop = asyncio.get_running_loop()
             
-            # Try different search approaches
-            try:
-                # First try: direct URL or standard search
-                func = functools.partial(ydl.extract_info, clean_query, download=False, process=False)
-                info = await loop.run_in_executor(None, func)
-            except Exception as e:
-                print(f"First search attempt failed: {e}")
-                # Second try: with different parameters
-                try:
-                    func = functools.partial(ydl.extract_info, f"ytsearch:{clean_query}", download=False)
-                    info = await loop.run_in_executor(None, func)
-                except Exception as e2:
-                    print(f"Second search attempt failed: {e2}")
-                    await searching_msg.edit(content="❌ Search failed. YouTube might be blocking requests.")
-                    return
-
-        if not info:
+            # Search using ytsearch prefix
+            info = await loop.run_in_executor(None, lambda: ydl.extract_info(f"ytsearch:{query}", download=False))
+            
+        if not info or 'entries' not in info or not info['entries']:
             await searching_msg.edit(content="❌ Could not find any audio for that query.")
             return
 
-        # Handle different response formats
-        if 'entries' in info:
-            # This is a search result with multiple entries
-            video = next((e for e in info['entries'] if e), None)
-        else:
-            # This is a direct video result
-            video = info
-
+        # Get the first search result
+        video = info['entries'][0]
         if not video:
             await searching_msg.edit(content="❌ No playable videos found.")
             return
 
-        # For search results, we need to extract the actual URL
-        if 'url' not in video and 'webpage_url' in video:
-            # We need to extract the actual stream URL from the webpage
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
-                    func2 = functools.partial(ydl2.extract_info, video['webpage_url'], download=False)
-                    video_details = await loop.run_in_executor(None, func2)
-                    if video_details and 'url' in video_details:
-                        audio_url = video_details['url']
-                    else:
-                        audio_url = None
-            except:
-                audio_url = None
-        else:
+        # Get the actual stream URL - this is the CRITICAL part
+        # We need to extract the direct audio URL from the video info
+        audio_url = None
+        for format in video.get('formats', []):
+            if format.get('acodec') != 'none' and format.get('vcodec') == 'none':  # Audio only
+                audio_url = format.get('url')
+                if audio_url:
+                    break
+        
+        # If no direct audio URL found, try the main URL
+        if not audio_url:
             audio_url = video.get('url')
 
         if not audio_url:
@@ -176,23 +132,18 @@ async def play(ctx, *, query):
 
         # Stream audio directly
         ffmpeg_options = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin',
-            'options': '-vn -filter:a "volume=0.8"'
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+            'options': '-vn'
         }
 
         ffmpeg_exec = ffmpeg.get_ffmpeg_exe()
         
-        # Create the audio source with error handling
-        try:
-            audio_source = discord.FFmpegPCMAudio(
-                audio_url,
-                executable=ffmpeg_exec,
-                **ffmpeg_options
-            )
-        except Exception as e:
-            await searching_msg.edit(content="❌ Failed to create audio stream.")
-            print(f"FFmpeg error: {e}")
-            return
+        # Create the audio source
+        audio_source = discord.FFmpegPCMAudio(
+            audio_url,
+            executable=ffmpeg_exec,
+            **ffmpeg_options
+        )
 
         # Play the audio
         voice_client.play(
@@ -209,7 +160,7 @@ async def play(ctx, *, query):
             await searching_msg.edit(content=error_msg)
         except:
             await ctx.send(error_msg[:100] + "...", delete_after=10)
-        
+            
 # === Commands ===
 
 @bot.command()
@@ -433,5 +384,6 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
