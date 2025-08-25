@@ -133,6 +133,7 @@ async def ping(ctx):
 # Command to show  two statuses in an embed
 @bot.command()
 async def presence(ctx):
+    await ctx.message.delete()
     embed = discord.Embed(
         title="Presence Manager",
         description="Select a status to set",
@@ -154,13 +155,26 @@ async def presence(ctx):
 
 # Command to manually set a status by number
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def setstatus(ctx, number: int):
     if 1 <= number <= len(statuses_list):
-        activity = statuses_list[number-1]
+        activity = statuses_list[number - 1]
         await bot.change_presence(activity=activity)
-        await ctx.send(f"✅ Status changed to: **{getattr(activity, 'name', 'Unknown')}**")
+        await ctx.send(
+            f"✅ Status changed to: **{getattr(activity, 'name', 'Unknown')}**",
+            delete_after=7  # <-- deletes after 7 seconds
+        )
+
+        # Reset the cycle so the next automatic update continues from the next status
+        global statuses
+        new_order = statuses_list[number:] + statuses_list[:number-1]
+        statuses = itertools.cycle(new_order)
+
     else:
-        await ctx.send("❌ Invalid status number.")
+        await ctx.send(
+            "❌ Invalid status number.",
+            delete_after=7  # <-- also deletes after 7 seconds
+        )
 
 @bot.command()
 async def x(ctx):
@@ -199,6 +213,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
