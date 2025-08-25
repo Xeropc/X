@@ -6,6 +6,7 @@ import threading
 from flask import Flask
 import time
 import asyncio
+import itertools
 
 # === Keep Alive Webserver ===
 app = Flask('')
@@ -45,27 +46,23 @@ def keep_alive():
 # === Discord Bot ===
 intents = discord.Intents.all()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="$", intents=intents)
+
+# Define multiple activities
+statuses = itertools.cycle([
+    discord.Streaming(name="X", url="https://www.twitch.tv/error"),
+    discord.Activity(type=discord.ActivityType.watching, name="Servers"),
+])
 
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
+    await asyncio.sleep(2)  # tiny wait to avoid race conditions
+    change_status.start()
 
-    # Wait a tiny bit to ensure bot is fully ready
-    await asyncio.sleep(2)
-
-    # Set activity status
-    activity = discord.Activity(
-        type=discord.ActivityType.watching,  # "Watching Servers"
-        name="Servers"
-    )
-    await bot.change_presence(status=discord.Status.online, activity=activity)
-    print("🎮 Activity status set!")
-
-    # Start reputation decay task if not already running
-    if not decay_reputation.is_running():
-        decay_reputation.start()
-        print("⏳ Reputation decay task started!")
+@tasks.loop(minutes=22)  # changes every 22 minutes
+async def change_status():
+    await bot.change_presence(activity=next(statuses))
         
 # === Reputation System ===
 reputation = {}         # Stores current reputation
@@ -130,6 +127,38 @@ async def ping(ctx):
     await ctx.message.delete()
     await ctx.send("I'm still awake and watching servers.", delete_after=4)
 
+# Command to show  two statuses in an embed
+@bot.command()
+async def presence(ctx):
+    embed = discord.Embed(
+        title="Presence Manager",
+        description="Select a status to set",
+        color=discord.Color.blurple()
+    )
+
+    # Only show the two statuses
+    for i, s in enumerate(statuses_list, start=1):
+        if isinstance(s, discord.Streaming):
+            type_name = "Streaming"
+            value = f"{s.name} → {s.url}"
+        else:
+            type_name = s.type.name.capitalize()
+            value = s.name
+        embed.add_field(name=f"{i}. {type_name}", value=value, inline=False)
+
+    embed.set_footer(text="Use $setstatus <number> to change status.")
+    await ctx.send(embed=embed)
+
+# Command to manually set a status by number
+@bot.command()
+async def setstatus(ctx, number: int):
+    if 1 <= number <= len(statuses_list):
+        activity = statuses_list[number-1]
+        await bot.change_presence(activity=activity)
+        await ctx.send(f"✅ Status changed to: **{getattr(activity, 'name', 'Unknown')}**")
+    else:
+        await ctx.send("❌ Invalid status number.")
+
 @bot.command()
 async def x(ctx):
     await ctx.message.delete()
@@ -166,4 +195,5 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
