@@ -68,7 +68,19 @@ async def join_channel(ctx):
     else:
         await ctx.send("❌ You must be in a voice channel to use this command.", delete_after=5)
 
-# === Play Song Function (optimized) ===
+import discord
+import yt_dlp
+import functools
+import asyncio
+import imageio_ffmpeg as ffmpeg
+
+# === Async helper to fetch info without blocking ===
+async def fetch_info(ydl, query):
+    loop = asyncio.get_running_loop()
+    func = functools.partial(ydl.extract_info, query, download=False)
+    return await loop.run_in_executor(None, func)
+
+# === Optimized play_song function ===
 async def play_song(ctx, query):
     voice_client = ctx.voice_client
     if not voice_client:
@@ -78,16 +90,16 @@ async def play_song(ctx, query):
     if voice_client.is_playing():
         voice_client.stop()
 
-    try:
-        ydl_opts = {
-            'format': 'bestaudio',
-            'noplaylist': True,
-            'ignoreerrors': True,
-            'default_search': 'ytsearch1',  # only fetch the first search result
-            'quiet': True,  # suppress unnecessary logs
-            'cookiefile': 'cookies.txt'  # optional: use if you have exported cookies
-        }
+    ydl_opts = {
+        'format': 'bestaudio',
+        'noplaylist': True,
+        'ignoreerrors': True,
+        'default_search': 'ytsearch1',   # Only fetch the first search result
+        'quiet': True,
+        'cookiefile': 'cookies.txt'      # Optional: use if you have exported cookies
+    }
 
+    try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = await fetch_info(ydl, query)
 
@@ -95,12 +107,16 @@ async def play_song(ctx, query):
             await ctx.send("❌ Could not find any audio for that query.", delete_after=5)
             return
 
-        # If it's a search, get the first entry
-        video = info['entries'][0] if 'entries' in info else info
-        audio_url = video.get('url')
+        # Handle search results or single videos
+        video = info['entries'][0] if 'entries' in info and info['entries'] else info
+        if not video or not video.get('url'):
+            await ctx.send("❌ Video unavailable or requires login.", delete_after=5)
+            return
+
+        audio_url = video['url']
         title = video.get('title', 'Unknown')
 
-        # Play audio directly from URL (no download)
+        # Stream audio directly
         voice_client.play(
             discord.FFmpegPCMAudio(
                 audio_url, 
@@ -119,19 +135,69 @@ async def play_song(ctx, query):
 # === Commands ===
 @bot.command()
 async def play(ctx, *, query):
-    # Join the voice channel first
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        if ctx.voice_client is None:
-            await channel.connect()
-        elif ctx.voice_client.channel != channel:
-            await ctx.voice_client.move_to(channel)
-    else:
+    if not ctx.author.voice:
         await ctx.send("❌ You must be in a voice channel to use this command.", delete_after=5)
         return
 
-    # Call the async-safe play_song
-    await play_song(ctx, query)
+    # Join or move to the author's voice channel
+    channel = ctx.author.voice.channel
+    if ctx.voice_client is None:
+        await channel.connect()
+    elif ctx.voice_client.channel != channel:
+        await ctx.voice_client.move_to(channel)
+
+    voice_client = ctx.voice_client
+    if voice_client.is_playing():
+        voice_client.stop()
+
+    ydl_opts = {
+        'format': 'bestaudio',
+        'noplaylist': True,
+        'ignoreerrors': True,
+        'default_search': 'ytsearch5',  # Fetch top 5 search results
+        'quiet': True,
+        'cookiefile': 'cookies.txt'     # Optional: for restricted videos
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = await fetch_info(ydl, query)
+
+        if not info:
+            await ctx.send("❌ Could not find any audio for that query.", delete_after=5)
+            return
+
+        # Loop through search results to find first playable video
+        entries = info['entries'] if 'entries' in info else [info]
+        video = None
+        for entry in entries:
+            if entry and entry.get('url'):
+                video = entry
+                break
+
+        if not video:
+            await ctx.send("❌ No playable videos found (may require login).", delete_after=5)
+            return
+
+        audio_url = video['url']
+        title = video.get('title', 'Unknown')
+
+        # Stream audio directly
+        voice_client.play(
+            discord.FFmpegPCMAudio(
+                audio_url,
+                executable=ffmpeg.get_ffmpeg_exe(),
+                options='-vn'
+            ),
+            after=lambda e: print(f'Finished playing: {e}')
+        )
+
+        await ctx.send(f"▶️ Now playing: **{title}**", delete_after=10)
+
+    except Exception as e:
+        await ctx.send(f"❌ Error playing audio: {e}", delete_after=5)
+        print("Error in play command:", e)
+
 @bot.command()
 async def stop(ctx):
     if ctx.voice_client:
@@ -352,6 +418,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
