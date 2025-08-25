@@ -132,8 +132,8 @@ async def ping(ctx):
 
 # Command to show  two statuses in an embed
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def presence(ctx):
-    await ctx.message.delete()
     embed = discord.Embed(
         title="Presence Manager",
         description="Select a status to set",
@@ -151,7 +151,7 @@ async def presence(ctx):
         embed.add_field(name=f"{i}. {type_name}", value=value, inline=False)
 
     embed.set_footer(text="Use $setstatus <number> to change status.")
-    await ctx.send(embed=embed)
+    await ctx.send(embed=embed, delete_after=10)
 
 # Command to manually set a status by number
 @bot.command()
@@ -213,6 +213,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
