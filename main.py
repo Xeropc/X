@@ -217,7 +217,7 @@ async def cmds_list(ctx):
     embed.add_field(name="✗ $presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥 (Permission Required)", inline=False)
     embed.add_field(name="☣︎ $purge", value="Purge's messages (Permission Required)", inline=False)
 
-    embed.set_footer(text="Note: Some commands require permissions.")
+    embed.set_footer(text="\nNote: Some commands require permissions.")
 
     # Send the embed and delete it after 25 seconds
     await ctx.send(embed=embed, delete_after=25)
@@ -230,6 +230,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
