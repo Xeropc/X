@@ -130,6 +130,38 @@ async def ping(ctx):
     await ctx.message.delete()
     await ctx.send("I'm still awake and watching servers.", delete_after=4)
 
+# === Advanced Moderation ===
+@bot.command()
+@commands.has_permissions(ban_members=True)
+async def ban(ctx, member: discord.Member, *, reason="No reason provided"):
+    """Ban a member from the server"""
+    await member.ban(reason=reason)
+    await ctx.send(f"✅ Banned {member.mention} | Reason: {reason}", delete_after=10)
+
+@bot.command()
+@commands.has_permissions(kick_members=True)
+async def kick(ctx, member: discord.Member, *, reason="No reason provided"):
+    """Kick a member from the server"""
+    await member.kick(reason=reason)
+    await ctx.send(f"✅ Kicked {member.mention} | Reason: {reason}", delete_after=10)
+
+@bot.command()
+@commands.has_permissions(manage_messages=True)
+async def mute(ctx, member: discord.Member, duration: int = 10):
+    """Temporarily mute a member (in minutes)"""
+    muted_role = discord.utils.get(ctx.guild.roles, name="Muted")
+    if not muted_role:
+        muted_role = await ctx.guild.create_role(name="Muted")
+        for channel in ctx.guild.channels:
+            await channel.set_permissions(muted_role, send_messages=False)
+    
+    await member.add_roles(muted_role)
+    await ctx.send(f"🔇 Muted {member.mention} for {duration} minutes", delete_after=10)
+    
+    # Auto-unmute after duration
+    await asyncio.sleep(duration * 60)
+    await member.remove_roles(muted_role)
+
 # Command to show  two statuses in an embed
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -191,6 +223,31 @@ async def purge(ctx, amount: int = 100):
     await confirm_msg.delete(delay=0)  # delete immediately
 
 @bot.command()
+async def quote(ctx):
+    """Get a random Caseoh quote"""
+    quotes = [
+        "Life. - Caseoh",
+        "Ellen, what did i tell you comin back to this STORE.",
+        "You goobers in the chat just say DOOR, DOOR, DOOR hululu,"
+        "TIM IM GON KILL YOU (#code Caseoh StarforgeSystems.com for 10% off! :D)",
+        "Use cheeky hashtag code Caseoh for 10% off - Caseoh", 
+        "STARFORGESYSTEMS.COM - Caseoh",
+        "Dagum disgusting putrid loser - Caseoh",
+        "Just chill out and vibe. That's life right there. - Caseoh",
+        "As long as you don't know what's under the surface, you're good. - Caseoh"
+    ]
+    
+    # Use an embed for better formatting
+    embed = discord.Embed(
+        title="Caseoh Quote",
+        description=random.choice(quotes),
+        color=discord.Color.gold()
+    )
+    embed.set_footer(text="Inspirational wisdom from Caseoh")
+    
+    await ctx.send(embed=embed, delete_after=25)
+
+@bot.command()
 async def x(ctx):
     await ctx.message.delete()
     message = (
@@ -229,3 +286,4 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
