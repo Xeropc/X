@@ -83,13 +83,21 @@ async def play(ctx, *, query):
     # Show that we're searching
     searching_msg = await ctx.send("🔍 Searching...")
 
-    # SIMPLIFIED yt-dlp options
+    # UPDATED yt-dlp options to avoid bot detection
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
         'ignoreerrors': True,
+        'referer': 'https://www.youtube.com/',
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+                'player_skip': ['configs', 'webpage', 'js']
+            }
+        },
     }
 
     try:
@@ -110,18 +118,15 @@ async def play(ctx, *, query):
             await searching_msg.edit(content="❌ No playable videos found.")
             return
 
-        # Get the actual stream URL - this is the CRITICAL part
-        # We need to extract the direct audio URL from the video info
-        audio_url = None
-        for format in video.get('formats', []):
-            if format.get('acodec') != 'none' and format.get('vcodec') == 'none':  # Audio only
-                audio_url = format.get('url')
-                if audio_url:
-                    break
-        
-        # If no direct audio URL found, try the main URL
+        # Get the actual stream URL
+        audio_url = video.get('url')
         if not audio_url:
-            audio_url = video.get('url')
+            # Try to get from formats if direct URL not available
+            for format in video.get('formats', []):
+                if format.get('acodec') != 'none':
+                    audio_url = format.get('url')
+                    if audio_url:
+                        break
 
         if not audio_url:
             await searching_msg.edit(content="❌ Could not get audio stream URL.")
@@ -384,6 +389,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
