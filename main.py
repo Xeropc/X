@@ -1,4 +1,5 @@
 import discord
+import imageio_ffmpeg as ffmpeg
 from discord.ext import commands, tasks
 import os
 import requests
@@ -101,7 +102,11 @@ async def play_song(ctx, query):
 
         # Play audio directly from URL (no download)
         voice_client.play(
-            discord.FFmpegPCMAudio(audio_url, options='-vn'),
+            discord.FFmpegPCMAudio(
+                audio_url, 
+                executable=ffmpeg.get_ffmpeg_exe(), 
+                options='-vn'
+            ),
             after=lambda e: print(f'Finished playing: {e}')
         )
 
@@ -347,6 +352,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
