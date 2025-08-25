@@ -63,18 +63,34 @@ async def join_channel(ctx):
 # === Play Song Function ===
 async def play_song(ctx, url):
     voice_client = ctx.voice_client
+
+    if not voice_client:
+        await ctx.send("❌ Bot is not connected to a voice channel.", delete_after=5)
+        return
+
     if voice_client.is_playing():
         voice_client.stop()
 
-    ydl_opts = {'format': 'bestaudio', 'noplaylist': True}
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        audio_url = info['url']
+    # yt_dlp options
+    ydl_opts = {
+        'format': 'bestaudio',
+        'noplaylist': True
+    }
 
-    voice_client.play(
-       discord.FFmpegPCMAudio(audio_url, options='-vn')
-        after=lambda e: print(f'Finished playing: {e}')
-    )
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            audio_url = info['url']
+
+        # Play audio
+        voice_client.play(
+            discord.FFmpegPCMAudio(audio_url, options='-vn'),
+            after=lambda e: print(f'Finished playing: {e}')
+        )
+
+    except Exception as e:
+        await ctx.send(f"❌ Error playing audio: {e}", delete_after=5)
+        print("Error in play_song:", e)
 
 # === Commands ===
 @bot.command()
@@ -302,6 +318,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
