@@ -7,6 +7,7 @@ from flask import Flask
 import time
 import asyncio
 import itertools
+import yt_dlp
 
 # === Keep Alive Webserver ===
 app = Flask('')
@@ -47,6 +48,71 @@ def keep_alive():
 intents = discord.Intents.all()
 intents.message_content = True
 bot = commands.Bot(command_prefix="$", intents=intents)
+
+# === Join Voice Channel ===
+async def join_channel(ctx):
+    if ctx.author.voice:
+        channel = ctx.author.voice.channel
+        if ctx.voice_client is None:
+            await channel.connect()
+        elif ctx.voice_client.channel != channel:
+            await ctx.voice_client.move_to(channel)
+    else:
+        await ctx.send("❌ You must be in a voice channel to use this command.", delete_after=5)
+
+# === Play Song Function ===
+async def play_song(ctx, url):
+    voice_client = ctx.voice_client
+    if voice_client.is_playing():
+        voice_client.stop()
+
+    ydl_opts = {'format': 'bestaudio', 'noplaylist': True}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        audio_url = info['url']
+
+    voice_client.play(
+       discord.FFmpegPCMAudio(audio_url, options='-vn')
+        after=lambda e: print(f'Finished playing: {e}')
+    )
+
+# === Commands ===
+@bot.command()
+async def play(ctx, *, query):
+    await join_channel(ctx)
+
+    ydl_opts = {
+        'format': 'bestaudio',
+        'noplaylist': True,
+        'default_search': 'ytsearch1'  # searches YouTube if it's not a URL
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(query, download=False)
+        # If it's a search, get the first result
+        video = info['entries'][0] if 'entries' in info else info
+        url = video['webpage_url']
+        title = video.get('title', url)
+
+    await play_song(ctx, url)
+    await ctx.send(f"▶️ Now playing: {title}", delete_after=10)
+
+@bot.command()
+async def stop(ctx):
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
+        await ctx.send("⏹️ Stopped and disconnected.", delete_after=5)
+    else:
+        await ctx.send("❌ Not connected to a voice channel.", delete_after=5)
+
+@bot.command()
+async def skip(ctx):
+    if ctx.voice_client and ctx.voice_client.is_playing():
+        ctx.voice_client.stop()
+        await ctx.send("⏭️ Skipped.", delete_after=5)
+    else:
+        await ctx.send("❌ Nothing is playing.", delete_after=5)
+
 
 # List of statuses for embeds / manual selection
 statuses_list = [
@@ -219,6 +285,9 @@ async def cmds_list(ctx):
     embed.add_field(name="☰ $cmds", value="Displays this command list", inline=False)
     embed.add_field(name="✗ $presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥 (Permission Required)", inline=False)
     embed.add_field(name="☣︎ $purge", value="Purge's messages (Permission Required)", inline=False)
+    embed.add_field(name="🎵 $play <query or URL>", value="Plays a song in the voice channel", inline=False)
+    embed.add_field(name="⏹️ $stop", value="Stops music and disconnects 𝘟 𝘎𝘶𝘢𝘳𝘥", inline=False)
+    embed.add_field(name="⏭️ $skip", value="Skips the current song", inline=False)
 
     embed.set_footer(text="\nNote: Some commands require permissions.")
 
@@ -233,6 +302,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
