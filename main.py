@@ -71,10 +71,10 @@ async def play_song(ctx, url):
     if voice_client.is_playing():
         voice_client.stop()
 
-    # yt_dlp options
+    # yt_dlp options for direct URL
     ydl_opts = {
         'format': 'bestaudio',
-        'noplaylist': True
+        'noplaylist': True,
     }
 
     try:
@@ -82,7 +82,6 @@ async def play_song(ctx, url):
             info = ydl.extract_info(url, download=False)
             audio_url = info['url']
 
-        # Play audio
         voice_client.play(
             discord.FFmpegPCMAudio(audio_url, options='-vn'),
             after=lambda e: print(f'Finished playing: {e}')
@@ -91,27 +90,40 @@ async def play_song(ctx, url):
     except Exception as e:
         await ctx.send(f"❌ Error playing audio: {e}", delete_after=5)
         print("Error in play_song:", e)
-
+    
 # === Commands ===
 @bot.command()
 async def play(ctx, *, query):
     await join_channel(ctx)
 
+    # yt_dlp options for search
     ydl_opts = {
         'format': 'bestaudio',
         'noplaylist': True,
-        'default_search': 'ytsearch1'  # searches YouTube if it's not a URL
+        'default_search': 'ytsearch5',  # search top 5 results
+        'ignoreerrors': True             # skip unavailable videos
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(query, download=False)
-        # If it's a search, get the first result
-        video = info['entries'][0] if 'entries' in info else info
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(query, download=False)
+
+        # Pick first valid video
+        video = next((v for v in info['entries'] if v), None)
+        if not video:
+            await ctx.send("❌ No video found for your search.", delete_after=5)
+            return
+
         url = video['webpage_url']
         title = video.get('title', url)
 
-    await play_song(ctx, url)
-    await ctx.send(f"▶️ Now playing: {title}", delete_after=10)
+        # Play the song
+        await play_song(ctx, url)
+        await ctx.send(f"▶️ Now playing: {title}", delete_after=10)
+
+    except Exception as e:
+        await ctx.send(f"❌ Error fetching video: {e}", delete_after=5)
+        print("Error in play command:", e)
 
 @bot.command()
 async def stop(ctx):
@@ -333,6 +345,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
