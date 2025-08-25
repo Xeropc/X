@@ -186,6 +186,61 @@ async def presence(ctx):
     embed.set_footer(text="Use $setstatus <number> to change status.")
     await ctx.send(embed=embed, delete_after=10)
 
+@bot.command()
+async def user(ctx, member: discord.Member = None):
+    """Display user information"""
+    member = member or ctx.author
+    await ctx.message.delete()
+    
+    # Calculate account age
+    account_age = (ctx.message.created_at - member.created_at).days
+    # Calculate server join age
+    join_age = (ctx.message.created_at - member.joined_at).days if member.joined_at else 0
+    
+    # Get user status
+    status = str(member.status).capitalize()
+    if member.activity:
+        activity = f"Playing {member.activity.name}"
+    else:
+        activity = "No activity"
+    
+    # Get user roles (excluding @everyone)
+    roles = [role.mention for role in member.roles if role.name != "@everyone"]
+    if not roles:
+        roles = ["No roles"]
+    
+    # Create embed
+    embed = discord.Embed(
+        title=f"👤 User Information - {member.display_name}",
+        color=member.color
+    )
+    
+    # Add fields
+    embed.add_field(name="📛 Username", value=f"{member.name}#{member.discriminator}", inline=True)
+    embed.add_field(name="🆔 User ID", value=member.id, inline=True)
+    embed.add_field(name="📊 Reputation", value=reputation.get(member.id, 100), inline=True)
+    
+    embed.add_field(name="📅 Account Created", value=f"{member.created_at.strftime('%b %d, %Y')}\n({account_age} days ago)", inline=True)
+    
+    if member.joined_at:
+        embed.add_field(name="📥 Joined Server", value=f"{member.joined_at.strftime('%b %d, %Y')}\n({join_age} days ago)", inline=True)
+    else:
+        embed.add_field(name="📥 Joined Server", value="Unknown", inline=True)
+    
+    embed.add_field(name="🎭 Highest Role", value=member.top_role.mention, inline=True)
+    
+    embed.add_field(name="🟢 Status", value=status, inline=True)
+    embed.add_field(name="🎮 Activity", value=activity, inline=True)
+    embed.add_field(name="📋 Roles", value=" ".join(roles[:3]) + (f" (+{len(roles)-3} more)" if len(roles) > 3 else ""), inline=False)
+    
+    # Add avatar thumbnail
+    if member.avatar:
+        embed.set_thumbnail(url=member.avatar.url)
+    
+    embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+    
+    await ctx.send(embed=embed, delete_after=30)
+
 # Command to manually set a status by number
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -224,7 +279,7 @@ async def purge(ctx, amount: int = 100):
     await confirm_msg.delete(delay=0)  # delete immediately
 
 @bot.command()
-async def quote(ctx):
+async def caseoh(ctx):
     """Get a random Caseoh quote"""
     await ctx.message.delete()
     
@@ -276,13 +331,13 @@ async def cmds_list(ctx):
 
     embed = discord.Embed(
         title="📜 XERO Bot Commands",
-        description="Here is the list of commands you can use:",
         color=discord.Color.blurple()
     )
     embed.add_field(name="⛉ $x", value="Shows DDoS protection status", inline=False)
     embed.add_field(name="✦ $rep", value="Check a member's reputation", inline=False)
     embed.add_field(name="✚ $status", value="Server health dashboard", inline=False)
     embed.add_field(name="𝗓𐰁 $ping", value="Check if the bot is awake", inline=False)
+    embed.add_field(name="𝗓𐰁 $user", value="View user details", inline=False)
     embed.add_field(name="☰ $cmds", value="Displays this command list", inline=False)
     embed.add_field(name="✗ $presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥 (Permission Required)", inline=False)
     embed.add_field(name="☣︎ $purge", value="Purge's messages (Permission Required)", inline=False)
@@ -299,6 +354,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
