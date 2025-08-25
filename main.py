@@ -140,11 +140,11 @@ async def presence(ctx):
         color=discord.Color.blurple()
     )
 
-    # Only show the two statuses
+    # Show statuses without URL in the embed
     for i, s in enumerate(statuses_list, start=1):
         if isinstance(s, discord.Streaming):
             type_name = "Streaming"
-            value = f"{s.name} → {s.url}"
+            value = s.name  # just show the name, hide URL
         else:
             type_name = s.type.name.capitalize()
             value = s.name
