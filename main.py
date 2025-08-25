@@ -48,11 +48,14 @@ intents = discord.Intents.all()
 intents.message_content = True
 bot = commands.Bot(command_prefix="$", intents=intents)
 
-# Define multiple activities
-statuses = itertools.cycle([
+# List of statuses for embeds / manual selection
+statuses_list = [
     discord.Streaming(name="X", url="https://www.twitch.tv/error"),
     discord.Activity(type=discord.ActivityType.watching, name="Servers"),
-])
+]
+
+# Cycle through statuses automatically
+statuses = itertools.cycle(statuses_list)
 
 @bot.event
 async def on_ready():
@@ -196,6 +199,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
