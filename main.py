@@ -7,6 +7,7 @@ from flask import Flask
 import time
 import asyncio
 import itertools
+import random
 
 # === Keep Alive Webserver ===
 app = Flask('')
@@ -286,4 +287,5 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
