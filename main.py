@@ -178,12 +178,12 @@ async def cmds_list(ctx):
         description="Here is the list of commands you can use:",
         color=discord.Color.blurple()
     )
-    embed.add_field(name="🛡️ !x", value="Shows DDoS protection status", inline=False)
-    embed.add_field(name="🛡️ !presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥", inline=False)
-    embed.add_field(name="📊 !rep", value="Check a member's reputation", inline=False)
-    embed.add_field(name="📈 !status", value="Server health dashboard", inline=False)
-    embed.add_field(name="💬 !ping", value="Check if the bot is awake", inline=False)
-    embed.add_field(name="📜 !cmds", value="Displays this command list", inline=False)
+    embed.add_field(name=" ⛉ $x", value="Shows DDoS protection status", inline=False)
+    embed.add_field(name=" ✗ $presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥", inline=False)
+    embed.add_field(name=" ✦ $rep", value="Check a member's reputation", inline=False)
+    embed.add_field(name=" ✚ $status", value="Server health dashboard", inline=False)
+    embed.add_field(name=" 𝗓𐰁 $ping", value="Check if the bot is awake", inline=False)
+    embed.add_field(name=" ☰ $cmds", value="Displays this command list", inline=False)
 
     # Send the embed and delete it after 25 seconds
     await ctx.send(embed=embed, delete_after=25)
@@ -196,6 +196,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
