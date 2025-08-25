@@ -5,3 +5,4 @@ python-dotenv
 py-cord
 yt-dlp
 youtube-search-python
+PyNaCl
