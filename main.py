@@ -1,5 +1,4 @@
 import discord
-import imageio_ffmpeg as ffmpeg
 from discord.ext import commands, tasks
 import os
 import requests
@@ -8,8 +7,6 @@ from flask import Flask
 import time
 import asyncio
 import itertools
-import yt_dlp
-import functools
 
 # === Keep Alive Webserver ===
 app = Flask('')
@@ -51,140 +48,6 @@ intents = discord.Intents.all()
 intents.message_content = True
 bot = commands.Bot(command_prefix="$", intents=intents)
 
-# === Join Voice Channel ===
-async def join_channel(ctx):
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        if ctx.voice_client is None:
-            await channel.connect()
-        elif ctx.voice_client.channel != channel:
-            await ctx.voice_client.move_to(channel)
-    else:
-        await ctx.send("❌ You must be in a voice channel to use this command.", delete_after=5)
-
-# === Optimized streaming play command ===
-@bot.command()
-async def play(ctx, *, query):
-    if not ctx.author.voice:
-        await ctx.send("❌ You must be in a voice channel to use this command.", delete_after=5)
-        return
-
-    # Join or move to the author's voice channel
-    channel = ctx.author.voice.channel
-    if ctx.voice_client is None:
-        await channel.connect()
-    elif ctx.voice_client.channel != channel:
-        await ctx.voice_client.move_to(channel)
-
-    voice_client = ctx.voice_client
-    if voice_client.is_playing():
-        voice_client.stop()
-
-    # Show that we're searching
-    searching_msg = await ctx.send("🔍 Searching...")
-
-    # UPDATED yt-dlp options to avoid bot detection
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'noplaylist': True,
-        'quiet': True,
-        'no_warnings': True,
-        'ignoreerrors': True,
-        'referer': 'https://www.youtube.com/',
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web'],
-                'player_skip': ['configs', 'webpage', 'js']
-            }
-        },
-    }
-
-    try:
-        # Extract video info
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            loop = asyncio.get_running_loop()
-            
-            # Search using ytsearch prefix
-            info = await loop.run_in_executor(None, lambda: ydl.extract_info(f"ytsearch:{query}", download=False))
-            
-        if not info or 'entries' not in info or not info['entries']:
-            await searching_msg.edit(content="❌ Could not find any audio for that query.")
-            return
-
-        # Get the first search result
-        video = info['entries'][0]
-        if not video:
-            await searching_msg.edit(content="❌ No playable videos found.")
-            return
-
-        # Get the actual stream URL
-        audio_url = video.get('url')
-        if not audio_url:
-            # Try to get from formats if direct URL not available
-            for format in video.get('formats', []):
-                if format.get('acodec') != 'none':
-                    audio_url = format.get('url')
-                    if audio_url:
-                        break
-
-        if not audio_url:
-            await searching_msg.edit(content="❌ Could not get audio stream URL.")
-            return
-
-        title = video.get('title', 'Unknown')
-        await searching_msg.edit(content=f"🎵 Found: **{title}**")
-
-        # Stream audio directly
-        ffmpeg_options = {
-            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-            'options': '-vn'
-        }
-
-        ffmpeg_exec = ffmpeg.get_ffmpeg_exe()
-        
-        # Create the audio source
-        audio_source = discord.FFmpegPCMAudio(
-            audio_url,
-            executable=ffmpeg_exec,
-            **ffmpeg_options
-        )
-
-        # Play the audio
-        voice_client.play(
-            audio_source,
-            after=lambda e: print(f"Finished playing: {e if e else 'Success'}")
-        )
-
-        await ctx.send(f"▶️ Now playing: **{title}**", delete_after=15)
-
-    except Exception as e:
-        error_msg = f"❌ Error: {str(e)}"
-        print("Full error in play command:", e)
-        try:
-            await searching_msg.edit(content=error_msg)
-        except:
-            await ctx.send(error_msg[:100] + "...", delete_after=10)
-            
-# === Commands ===
-
-@bot.command()
-async def stop(ctx):
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("⏹️ Stopped and disconnected.", delete_after=5)
-    else:
-        await ctx.send("❌ Not connected to a voice channel.", delete_after=5)
-
-@bot.command()
-async def skip(ctx):
-    if ctx.voice_client and ctx.voice_client.is_playing():
-        ctx.voice_client.stop()
-        await ctx.send("⏭️ Skipped.", delete_after=5)
-    else:
-        await ctx.send("❌ Nothing is playing.", delete_after=5)
-
-
 # List of statuses for embeds / manual selection
 statuses_list = [
     discord.Streaming(name="X", url="https://www.twitch.tv/error"),
@@ -199,7 +62,6 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     await asyncio.sleep(2)  # tiny wait to avoid race conditions
     change_status.start()
-    decay_reputation.start()
 
 @tasks.loop(minutes=22)  # changes every 22 minutes
 async def change_status():
@@ -272,7 +134,6 @@ async def ping(ctx):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def presence(ctx):
-    await ctx.message.delete()
     embed = discord.Embed(
         title="Presence Manager",
         description="Select a status to set",
@@ -290,14 +151,12 @@ async def presence(ctx):
         embed.add_field(name=f"{i}. {type_name}", value=value, inline=False)
 
     embed.set_footer(text="Use $setstatus <number> to change status.")
-    await ctx.send(embed=embed, delete_after=15)
+    await ctx.send(embed=embed, delete_after=10)
 
 # Command to manually set a status by number
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setstatus(ctx, number: int):
-    await ctx.message.delete()
-    
     if 1 <= number <= len(statuses_list):
         activity = statuses_list[number - 1]
         await bot.change_presence(activity=activity)
@@ -331,24 +190,6 @@ async def purge(ctx, amount: int = 100):
     confirm_msg = await ctx.send(f"Deleted {len(deleted)-1} messages.")  # exclude the command itself
     await confirm_msg.delete(delay=0)  # delete immediately
 
-@bot.command(name="music")
-async def music_cmds(ctx):
-    await ctx.message.delete()
-
-    embed = discord.Embed(
-        title="♫ Music Commands",
-        description="Commands you can use for music via YT:",
-        color=discord.Color.green()
-    )
-    embed.add_field(name="▶︎ $play <query or URL>", value="Plays a song in the voice channel", inline=False)
-    embed.add_field(name="❚❚ $stop", value="Stops music and disconnects 𝘟 𝘎𝘶𝘢𝘳𝘥", inline=False)
-    embed.add_field(name="⏭ $skip", value="Skips the current song", inline=False)
-    
-    embed.set_footer(text="Note: You must be in a voice channel to use these commands.")
-
-    await ctx.send(embed=embed, delete_after=25)
-
-
 @bot.command()
 async def x(ctx):
     await ctx.message.delete()
@@ -375,8 +216,7 @@ async def cmds_list(ctx):
     embed.add_field(name="☰ $cmds", value="Displays this command list", inline=False)
     embed.add_field(name="✗ $presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥 (Permission Required)", inline=False)
     embed.add_field(name="☣︎ $purge", value="Purge's messages (Permission Required)", inline=False)
-    embed.add_field(name="♫  $music", value="Music Commands", inline=False)
-    embed.set_footer(text="\nNote: Some commands require permissions.")
+    embed.set_footer(text="Note: Some commands require permissions.")
 
     # Send the embed and delete it after 25 seconds
     await ctx.send(embed=embed, delete_after=25)
@@ -389,7 +229,3 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
-
-
-
-
