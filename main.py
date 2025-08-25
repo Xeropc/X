@@ -177,6 +177,20 @@ async def setstatus(ctx, number: int):
         )
 
 @bot.command()
+@commands.has_permissions(administrator=True)
+async def purge(ctx, amount: int = 100):
+    """
+    Purges messages in the current channel.
+    amount: Number of messages to delete (default 100)
+    """
+    # Purge the specified number of messages INCLUDING the command message itself
+    deleted = await ctx.channel.purge(limit=amount + 1)  # +1 to include the $purge command
+    
+    # Optional: send a quick confirmation message and delete it immediately
+    confirm_msg = await ctx.send(f"Deleted {len(deleted)-1} messages.")  # exclude the command itself
+    await confirm_msg.delete(delay=0)  # delete immediately
+
+@bot.command()
 async def x(ctx):
     await ctx.message.delete()
     message = (
@@ -195,12 +209,15 @@ async def cmds_list(ctx):
         description="Here is the list of commands you can use:",
         color=discord.Color.blurple()
     )
-    embed.add_field(name=" ⛉ $x", value="Shows DDoS protection status", inline=False)
-    embed.add_field(name=" ✗ $presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥", inline=False)
-    embed.add_field(name=" ✦ $rep", value="Check a member's reputation", inline=False)
-    embed.add_field(name=" ✚ $status", value="Server health dashboard", inline=False)
-    embed.add_field(name=" 𝗓𐰁 $ping", value="Check if the bot is awake", inline=False)
-    embed.add_field(name=" ☰ $cmds", value="Displays this command list", inline=False)
+    embed.add_field(name="⛉ $x", value="Shows DDoS protection status", inline=False)
+    embed.add_field(name="✦ $rep", value="Check a member's reputation", inline=False)
+    embed.add_field(name="✚ $status", value="Server health dashboard", inline=False)
+    embed.add_field(name="𝗓𐰁 $ping", value="Check if the bot is awake", inline=False)
+    embed.add_field(name="☰ $cmds", value="Displays this command list", inline=False)
+    embed.add_field(name="✗ $presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥 (Permission Required)", inline=False)
+    embed.add_field(name="☣︎ $purge", value="Purge's messages (Permission Required)", inline=False)
+
+    embed.set_footer(text="Note: Some commands require permissions.")
 
     # Send the embed and delete it after 25 seconds
     await ctx.send(embed=embed, delete_after=25)
@@ -213,6 +230,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
