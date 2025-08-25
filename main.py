@@ -275,6 +275,24 @@ async def purge(ctx, amount: int = 100):
     confirm_msg = await ctx.send(f"Deleted {len(deleted)-1} messages.")  # exclude the command itself
     await confirm_msg.delete(delay=0)  # delete immediately
 
+@bot.command(name="music")
+async def music_cmds(ctx):
+    await ctx.message.delete()
+
+    embed = discord.Embed(
+        title="♫ Music Commands",
+        description="Commands you can use for music via YT:",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="▶︎ $play <query or URL>", value="Plays a song in the voice channel", inline=False)
+    embed.add_field(name="❚❚ $stop", value="Stops music and disconnects 𝘟 𝘎𝘶𝘢𝘳𝘥", inline=False)
+    embed.add_field(name="⏭ $skip", value="Skips the current song", inline=False)
+    
+    embed.set_footer(text="Note: You must be in a voice channel to use these commands.")
+
+    await ctx.send(embed=embed, delete_after=25)
+
+
 @bot.command()
 async def x(ctx):
     await ctx.message.delete()
@@ -301,10 +319,7 @@ async def cmds_list(ctx):
     embed.add_field(name="☰ $cmds", value="Displays this command list", inline=False)
     embed.add_field(name="✗ $presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥 (Permission Required)", inline=False)
     embed.add_field(name="☣︎ $purge", value="Purge's messages (Permission Required)", inline=False)
-    embed.add_field(name="▶︎ $play <query or URL>", value="Plays a song in the voice channel", inline=False)
-    embed.add_field(name="❚❚ $stop", value="Stops music and disconnects 𝘟 𝘎𝘶𝘢𝘳𝘥", inline=False)
-    embed.add_field(name="⏭ $skip", value="Skips the current song", inline=False)
-
+    embed.add_field(name="♫  $music", value="Music Commands", inline=False)
     embed.set_footer(text="\nNote: Some commands require permissions.")
 
     # Send the embed and delete it after 25 seconds
@@ -318,6 +333,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
