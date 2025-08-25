@@ -6,3 +6,4 @@ py-cord
 yt-dlp
 youtube-search-python
 PyNaCl
+imageio-ffmpeg
