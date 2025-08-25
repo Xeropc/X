@@ -73,9 +73,12 @@ async def play_song(ctx, url):
 
     # yt_dlp options for direct URL
     ydl_opts = {
-        'format': 'bestaudio',
-        'noplaylist': True,
-    }
+    'format': 'bestaudio',
+    'noplaylist': True,
+    'default_search': 'ytsearch5',
+    'ignoreerrors': True,
+    'cookiefile': 'cookies.txt'  # path to exported cookies
+}
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -345,6 +348,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
