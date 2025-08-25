@@ -226,22 +226,34 @@ async def purge(ctx, amount: int = 100):
 @bot.command()
 async def quote(ctx):
     """Get a random Caseoh quote"""
+    await ctx.message.delete()
+    
     quotes = [
         "Life. - Caseoh",
         "Ellen, what did i tell you comin back to this STORE.",
-        "You goobers in the chat just say DOOR, DOOR, DOOR hululu,"
+        "You goobers in the chat just say DOOR, DOOR, DOOR hululu",
         "TIM IM GON KILL YOU (#code Caseoh StarforgeSystems.com for 10% off! :D)",
         "Use cheeky hashtag code Caseoh for 10% off - Caseoh", 
         "STARFORGESYSTEMS.COM - Caseoh",
         "Dagum disgusting putrid loser - Caseoh",
         "Just chill out and vibe. That's life right there. - Caseoh",
-        "As long as you don't know what's under the surface, you're good. - Caseoh"
+        "As long as you don't know what's under the surface, you're good. - Caseoh",
+        "Door. - Caseoh",
+        "I'm not fat, I'm just big boneded. - Caseoh",
+        "Chat, I will end you. - Caseoh",
+        "This is why we can't have nice things. - Caseoh",
+        "You're actually disgusting. - Caseoh",
+        "I'm gonna scream. - Caseoh"
     ]
+    
+    # Ensure proper randomness
+    selected_quote = random.choice(quotes)
+    print(f"Selected quote: {selected_quote}")  # ← MOVE THE PRINT STATEMENT HERE
     
     # Use an embed for better formatting
     embed = discord.Embed(
-        title="Caseoh Quote",
-        description=random.choice(quotes),
+        title="💬 Caseoh Quote",
+        description=selected_quote,
         color=discord.Color.gold()
     )
     embed.set_footer(text="Inspirational wisdom from Caseoh")
@@ -287,5 +299,6 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
