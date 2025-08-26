@@ -197,6 +197,23 @@ async def ban(ctx, member: discord.Member, *, reason="No reason provided"):
     await member.ban(reason=reason)
     await ctx.send(f"✅ Banned {member.mention} | Reason: {reason}", delete_after=10)
 
+bot.command()
+@commands.has_permissions(ban_members=True)
+async def unban(ctx, user_id: int, *, reason="No reason provided"):
+    """Unban a user by their ID"""
+    await ctx.message.delete()
+    
+    try:
+        user = await bot.fetch_user(user_id)
+        await ctx.guild.unban(user, reason=reason)
+        await ctx.send(f"✅ Unbanned {user.name}#{user.discriminator} | Reason: {reason}", delete_after=10)
+    except discord.NotFound:
+        await ctx.send("❌ User not found or not banned.", delete_after=7)
+    except discord.Forbidden:
+        await ctx.send("❌ I don't have permission to unban members.", delete_after=7)
+    except discord.HTTPException:
+        await ctx.send("❌ Failed to unban user. Please try again.", delete_after=7)
+
 @bot.command()
 @commands.has_permissions(kick_members=True)
 async def kick(ctx, member: discord.Member, *, reason="No reason provided"):
@@ -586,6 +603,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
                 ("⚙️ $setstatus [number]", "Set 𝘟 𝘎𝘶𝘢𝘳𝘥 status", False),
                 ("☣︎ $purge [amount]", "Purge messages", False),
                 ("🛡️ $ban @user [reason]", "Ban a member", False),
+                ("🛡️ $unban [userID] [reason]", "Unban a user by their ID", False),
                 ("👢 $kick @user [reason]", "Kick a member", False),
                 ("🔇 $mute @user [minutes]", "Temporarily mute a member", False),
                 ("🔊 $unmute @user", "Unmute a muted member", False),
@@ -669,6 +687,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
