@@ -9,6 +9,35 @@ import asyncio
 import itertools
 import random
 import aiohttp
+import json
+import atexit
+
+# reputation save
+def load_reputation():
+    """Load reputation data from file"""
+    try:
+        with open('reputation.json', 'r') as f:
+            data = json.load(f)
+            # Convert keys back to integers (JSON saves them as strings)
+            return {int(k): v for k, v in data.items()}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def save_reputation():
+    """Save reputation data to file"""
+    with open('reputation.json', 'w') as f:
+        json.dump(reputation, f)
+
+# Load reputation data when bot starts
+reputation = load_reputation()
+
+# Register save function to run when bot shuts down
+atexit.register(save_reputation)
+
+@tasks.loop(minutes=5)  # Save every 5 minutes
+async def save_reputation_periodically():
+    save_reputation()
+    print("💾 Reputation data saved automatically")
 
 # === Keep Alive Webserver ===
 app = Flask('')
@@ -64,13 +93,14 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     await asyncio.sleep(2)  # tiny wait to avoid race conditions
     change_status.start()
+    save_reputation_periodically.start()
+    decay_reputation.start()
 
 @tasks.loop(minutes=22)  # changes every 22 minutes
 async def change_status():
     await bot.change_presence(activity=next(statuses))
         
 # === Reputation System ===
-reputation = {}         # Stores current reputation
 last_active = {}        # Tracks last activity timestamp
 MAX_REP = 1000          # Maximum reputation cap
 
@@ -532,15 +562,3 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
-
-
-
-
-
-
-
-
-
-
-
-
