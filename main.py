@@ -197,7 +197,7 @@ async def ban(ctx, member: discord.Member, *, reason="No reason provided"):
     await member.ban(reason=reason)
     await ctx.send(f"✅ Banned {member.mention} | Reason: {reason}", delete_after=10)
 
-bot.command()
+@bot.command()
 @commands.has_permissions(ban_members=True)
 async def unban(ctx, user_id: int, *, reason="No reason provided"):
     """Unban a user by their ID"""
@@ -687,6 +687,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
