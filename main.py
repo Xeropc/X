@@ -152,7 +152,7 @@ async def kick(ctx, member: discord.Member, *, reason="No reason provided"):
 @bot.command()
 @commands.has_permissions(manage_messages=True)
 async def mute(ctx, member: discord.Member, duration: int = 10):
-    """Temporarily mute a member (in minutes)"""\
+    """Temporarily mute a member (in minutes)"""
     await ctx.message.delete()
     muted_role = discord.utils.get(ctx.guild.roles, name="Muted")
     if not muted_role:
@@ -528,6 +528,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
