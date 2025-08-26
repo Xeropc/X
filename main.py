@@ -378,14 +378,14 @@ async def meme(ctx):
     await ctx.message.delete()
     # List of popular meme image URLs (keep them clean and SFW)
     memes = [
-        "https://i.imgur.com/5KllP3q.jpeg",
-        "https://i.imgur.com/ZmZmKm0.jpeg",
-        "https://i.imgur.com/9WxrGXz.jpeg",
-        "https://i.imgur.com/1N6g4d5.jpeg",
-        "https://i.imgur.com/3Kq7U2x.jpeg",
-        "https://i.imgur.com/7Lr45Dk.jpeg",
-        "https://i.imgur.com/vT9Z6pX.jpeg",
-        "https://i.imgur.com/bU8gG4r.jpeg"
+        "https://i.imgur.com/YsDdoJv.jpeg",
+        "https://i.imgur.com/Pv4HAjO.jpeg",
+        "https://i.imgur.com/VRdTDqp.jpeg",
+        "https://i.imgur.com/D2EstGb.jpeg",
+        "https://i.imgur.com/MEu4y9G.jpeg",
+        "https://i.imgur.com/NGrYGus.jpeg",
+        "https://i.imgur.com/5nt2K2X.jpeg",
+        "https://i.imgur.com/zFNBx0E.jpeg"
     ]
     meme_url = random.choice(memes)
     embed = discord.Embed(title="📸 Random Meme", color=discord.Color.random())
@@ -412,7 +412,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
         except discord.NotFound:
             pass
     
-    # Define pages
+    # Define pages - REMOVE THE "restricted" FLAGS
     pages = [
         {
             "title": "📜 XERO Bot Commands - Page 1/3",
@@ -424,8 +424,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
                 ("𝗓𐰁 $ping", "Check if the bot is awake", False),
                 ("𝗓𐰁 $user [user]", "View user details", False),
                 ("☰ $cmds [page]", "Displays this command list", False),
-            ],
-            "restricted": False
+            ]
         },
         {
             "title": "📜 XERO Bot Commands - Page 2/3",
@@ -435,12 +434,11 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
                 ("🪙 $coinflip", "Flip a coin", False),
                 ("🎲 $dice [sides]", "Roll a dice (default 6 sides)", False),
                 ("📸 $meme", "Get a random meme", False)
-            ],
-            "restricted": False
+            ]
         },
         {
             "title": "🔒 ADMIN ONLY COMMANDS - Page 3/3",
-            "description": "**Administrator Permissions Required**",
+            "description": "**⚠️ Administrator Permissions Required**\n*You'll get an error if you try to use these without permission*",
             "fields": [
                 ("✗ $presence", "Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥", False),
                 ("☣︎ $purge [amount]", "Purge messages", False),
@@ -449,8 +447,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
                 ("🔇 $mute @user [minutes]", "Temporarily mute a member", False),
                 ("🔊 $unmute @user", "Unmute a muted member", False),
                 ("⚙️ $setstatus [number]", "Set bot status manually", False),
-            ],
-            "restricted": True
+            ]
         }
     ]
     
@@ -458,63 +455,33 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
     if page < 1 or page > len(pages):
         page = 1
     
-    # Restricted page check
-    if pages[page-1]["restricted"] and not ctx.author.guild_permissions.administrator:
-        embed = discord.Embed(
-            title="🔒 ADMIN COMMANDS - Page 3/3",
-            description="**Administrator Permissions Required**\n\nYou need the Administrator permission to view this page.",
-            color=discord.Color.red()
-        )
-        embed.set_footer(text="Page 3/3 • React with ◀️ to go back")
-        
-        message = await ctx.send(embed=embed)
-        await message.add_reaction("◀️")
-        
-        def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) == "◀️" and reaction.message.id == message.id
-        
-        try:
-            while True:  # keep looping until timeout
-                reaction, user = await bot.wait_for("reaction_add", timeout=20.0, check=check)
-                if str(reaction.emoji) == "◀️":
-                    await message.delete()
-                    await cmds_list(ctx, page=2, from_reaction=True)
-                    return
-        except asyncio.TimeoutError:
-            try:
-                await message.delete()
-            except:
-                pass
-        return
-    
-    # Build current page embed
+    # Build current page embed - ALWAYS show all pages to everyone
     current_page = pages[page-1]
     embed = discord.Embed(
         title=current_page["title"],
         description=current_page["description"],
-        color=discord.Color.blurple() if not current_page["restricted"] else discord.Color.gold()
+        color=discord.Color.blurple()
     )
+    
     for name, value, inline in current_page["fields"]:
         embed.add_field(name=name, value=value, inline=inline)
+    
     embed.set_footer(text=f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate")
     
     message = await ctx.send(embed=embed)
     
-    # Reaction navigation
+    # Reaction navigation for everyone
     if len(pages) > 1:
         if page > 1:
             await message.add_reaction("◀️")
         if page < len(pages):
-            next_page_restricted = pages[page]["restricted"]
-            has_permissions = not next_page_restricted or ctx.author.guild_permissions.administrator
-            if has_permissions:
-                await message.add_reaction("▶️")
+            await message.add_reaction("▶️")
         
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
         
         try:
-            while True:  # reset timer with each reaction
+            while True:
                 reaction, user = await bot.wait_for("reaction_add", timeout=20.0, check=check)
                 if str(reaction.emoji) == "▶️" and page < len(pages):
                     await message.delete()
@@ -538,5 +505,6 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
