@@ -334,6 +334,65 @@ async def caseoh(ctx):
     
     await ctx.send(embed=embed, delete_after=25)
 
+# === Entertainment Commands ===
+
+@bot.command()
+async def joke(ctx):
+    """Tell a random joke"""
+    await ctx.message.delete()
+    jokes = [
+        "Why don't scientists trust atoms? Because they make up everything!",
+        "Why did the scarecrow win an award? Because he was outstanding in his field!",
+        "Why don't skeletons fight each other? They don't have the guts.",
+        "What do you call a fake noodle? An impasta!",
+        "Why did the math book look so sad? Because it had too many problems.",
+        "How do you organize a space party? You planet!",
+        "What's the best thing about Switzerland? I don't know, but the flag is a big plus.",
+        "How does a penguin build its house? Igloos it together!",
+        "Why did the coffee file a police report? It got mugged.",
+        "What do you call a bear with no teeth? A gummy bear!"
+    ]
+    joke = random.choice(jokes)
+    await ctx.send(f"🎭 **Joke:** {joke}", delete_after=15)
+
+@bot.command()
+async def coinflip(ctx):
+    """Flip a coin"""
+    await ctx.message.delete()
+    result = random.choice(["Heads", "Tails"])
+    await ctx.send(f"🪙 **Coin Flip:** {result}!", delete_after=10)
+
+@bot.command()
+async def dice(ctx, sides: int = 6):
+    """Roll a dice (default 6 sides)"""
+    await ctx.message.delete()
+    if sides < 2:
+        await ctx.send("❌ The dice must have at least 2 sides.", delete_after=5)
+        return
+    roll = random.randint(1, sides)
+    await ctx.send(f"🎲 **Dice Roll ({sides} sides):** You rolled a **{roll}**!", delete_after=10)
+
+@bot.command()
+async def meme(ctx):
+    """Get a random meme"""
+    await ctx.message.delete()
+    # List of popular meme image URLs (keep them clean and SFW)
+    memes = [
+        "https://i.imgur.com/5KllP3q.jpeg",
+        "https://i.imgur.com/ZmZmKm0.jpeg",
+        "https://i.imgur.com/9WxrGXz.jpeg",
+        "https://i.imgur.com/1N6g4d5.jpeg",
+        "https://i.imgur.com/3Kq7U2x.jpeg",
+        "https://i.imgur.com/7Lr45Dk.jpeg",
+        "https://i.imgur.com/vT9Z6pX.jpeg",
+        "https://i.imgur.com/bU8gG4r.jpeg"
+    ]
+    meme_url = random.choice(memes)
+    embed = discord.Embed(title="📸 Random Meme", color=discord.Color.random())
+    embed.set_image(url=meme_url)
+    embed.set_footer(text="Powered by imgur")
+    await ctx.send(embed=embed, delete_after=20)
+
 @bot.command()
 async def x(ctx):
     await ctx.message.delete()
@@ -479,4 +538,5 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
