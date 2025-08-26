@@ -8,6 +8,7 @@ import time
 import asyncio
 import itertools
 import random
+import aiohttp
 
 # === Keep Alive Webserver ===
 app = Flask('')
@@ -162,6 +163,24 @@ async def mute(ctx, member: discord.Member, duration: int = 10):
     # Auto-unmute after duration
     await asyncio.sleep(duration * 60)
     await member.remove_roles(muted_role)
+
+# Add this to your moderation commands section
+@bot.command()
+@commands.has_permissions(manage_messages=True)
+async def unmute(ctx, member: discord.Member):
+    """Unmute a previously muted member"""
+    muted_role = discord.utils.get(ctx.guild.roles, name="Muted")
+    
+    if not muted_role:
+        await ctx.send("❌ There is no Muted role in this server.", delete_after=7)
+        return
+        
+    if muted_role not in member.roles:
+        await ctx.send(f"❌ {member.display_name} is not muted.", delete_after=7)
+        return
+        
+    await member.remove_roles(muted_role)
+    await ctx.send(f"🔊 Unmuted {member.mention}", delete_after=10)
 
 # Command to show  two statuses in an embed
 @bot.command()
@@ -326,25 +345,137 @@ async def x(ctx):
     await ctx.send(message, delete_after=4)
 
 @bot.command(name="cmds")
-async def cmds_list(ctx):
+async def cmds_list(ctx, page: int = 1):
     await ctx.message.delete()
-
+    
+    # Define pages
+    pages = [
+        {
+            "title": "📜 XERO Bot Commands - Page 1/3",
+            "description": "General Commands",
+            "fields": [
+                ("⛉ $x", "Shows DDoS protection status", False),
+                ("✦ $rep [user]", "Check a member's reputation", False),
+                ("✚ $status", "Server health dashboard", False),
+                ("𝗓𐰁 $ping", "Check if the bot is awake", False),
+                ("𝗓𐰁 $user [user]", "View user details", False),
+                ("☰ $cmds [page]", "Displays this command list", False),
+            ],
+            "restricted": False
+        },
+        {
+            "title": "📜 XERO Bot Commands - Page 2/3",
+            "description": "Entertainment Commands",
+            "fields": [
+                ("🎭 $joke", "Tell a random joke", False),
+                ("🪙 $coinflip", "Flip a coin", False),
+                ("🎲 $dice [sides]", "Roll a dice (default 6 sides)", False),
+                ("📸 $meme", "Get a random meme", False)
+            ],
+            "restricted": False
+        },
+        {
+            "title": "🔒 ADMIN ONLY COMMANDS - Page 3/3",
+            "description": "**Administrator Permissions Required**",
+            "fields": [
+                ("✗ $presence", "Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥", False),
+                ("☣︎ $purge [amount]", "Purge messages", False),
+                ("🛡️ $ban @user [reason]", "Ban a member", False),
+                ("👢 $kick @user [reason]", "Kick a member", False),
+                ("🔇 $mute @user [minutes]", "Temporarily mute a member", False),
+                ("🔊 $unmute @user", "Unmute a muted member", False),
+                ("⚙️ $setstatus [number]", "Set bot status manually", False),
+            ],
+            "restricted": True
+        }
+    ]
+    
+    # Validate page number
+    if page < 1 or page > len(pages):
+        page = 1
+    
+    # Check if user is trying to access restricted page without permissions
+    if pages[page-1]["restricted"] and not ctx.author.guild_permissions.administrator:
+        # Show permission required message instead of the admin page
+        embed = discord.Embed(
+            title="🔒 ADMIN COMMANDS - Page 3/3",
+            description="**Administrator Permissions Required**\n\nYou need the Administrator permission to view this page.",
+            color=discord.Color.red()
+        )
+        embed.set_footer(text="Page 3/3 • React with ◀️ to go back")
+        
+        message = await ctx.send(embed=embed)
+        
+        # Only add back arrow
+        await message.add_reaction("◀️")
+        
+        # Wait for reaction input
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) == "◀️" and reaction.message.id == message.id
+        
+        try:
+            reaction, user = await bot.wait_for("reaction_add", timeout=15.0, check=check)
+            await message.delete()
+            await cmds_list(ctx, page=2)  # Go back to page 2
+        except asyncio.TimeoutError:
+            try:
+                await message.clear_reactions()
+            except:
+                pass
+        return
+    
+    current_page = pages[page-1]
+    
     embed = discord.Embed(
-        title="📜 XERO Bot Commands",
-        color=discord.Color.blurple()
+        title=current_page["title"],
+        description=current_page["description"],
+        color=discord.Color.blurple() if not current_page["restricted"] else discord.Color.gold()
     )
-    embed.add_field(name="⛉ $x", value="Shows DDoS protection status", inline=False)
-    embed.add_field(name="✦ $rep", value="Check a member's reputation", inline=False)
-    embed.add_field(name="✚ $status", value="Server health dashboard", inline=False)
-    embed.add_field(name="𝗓𐰁 $ping", value="Check if the bot is awake", inline=False)
-    embed.add_field(name="𝗓𐰁 $user", value="View user details", inline=False)
-    embed.add_field(name="☰ $cmds", value="Displays this command list", inline=False)
-    embed.add_field(name="✗ $presence", value="Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥 (Permission Required)", inline=False)
-    embed.add_field(name="☣︎ $purge", value="Purge's messages (Permission Required)", inline=False)
-    embed.set_footer(text="Note: Some commands require permissions.")
-
-    # Send the embed and delete it after 25 seconds
-    await ctx.send(embed=embed, delete_after=25)
+    
+    for name, value, inline in current_page["fields"]:
+        embed.add_field(name=name, value=value, inline=inline)
+    
+    embed.set_footer(text=f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate")
+    
+    # Send the embed
+    message = await ctx.send(embed=embed)
+    
+    # Add reactions for navigation if there are multiple pages
+    if len(pages) > 1:
+        # Only add left arrow if not on first page
+        if page > 1:
+            await message.add_reaction("◀️")
+        
+        # Only add right arrow if not on last page and has permissions for next page
+        if page < len(pages):
+            next_page_restricted = pages[page]["restricted"]
+            has_permissions = not next_page_restricted or ctx.author.guild_permissions.administrator
+            
+            if has_permissions:
+                await message.add_reaction("▶️")
+            else:
+                # User doesn't have permissions for next page, don't show arrow
+                pass
+        
+        # Wait for reaction input
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
+        
+        try:
+            reaction, user = await bot.wait_for("reaction_add", timeout=30.0, check=check)
+            
+            if str(reaction.emoji) == "▶️" and page < len(pages):
+                await message.delete()
+                await cmds_list(ctx, page + 1)
+            elif str(reaction.emoji) == "◀️" and page > 1:
+                await message.delete()
+                await cmds_list(ctx, page - 1)
+                
+        except asyncio.TimeoutError:
+            try:
+                await message.clear_reactions()
+            except:
+                pass  # Ignore if message was already deleted
 
 # === Start Everything ===
 keep_alive()
@@ -354,7 +485,3 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
-
-
-
-
