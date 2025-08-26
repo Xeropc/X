@@ -295,7 +295,7 @@ async def purge(ctx, amount: int = 100):
     
     # Optional: send a quick confirmation message and delete it immediately
     confirm_msg = await ctx.send(f"Deleted {len(deleted)-1} messages.")  # exclude the command itself
-    await confirm_msg.delete(delay=0)  # delete immediately
+    await confirm_msg.delete(delay=2)  # delete immediately
 
 @bot.command()
 async def caseoh(ctx):
@@ -345,8 +345,13 @@ async def x(ctx):
     await ctx.send(message, delete_after=4)
 
 @bot.command(name="cmds")
-async def cmds_list(ctx, page: int = 1):
-    await ctx.message.delete()
+async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
+    # Only delete the command message if this was typed manually
+    if not from_reaction:
+        try:
+            await ctx.message.delete()
+        except discord.NotFound:
+            pass
     
     # Define pages
     pages = [
@@ -394,9 +399,8 @@ async def cmds_list(ctx, page: int = 1):
     if page < 1 or page > len(pages):
         page = 1
     
-    # Check if user is trying to access restricted page without permissions
+    # Restricted page check
     if pages[page-1]["restricted"] and not ctx.author.guild_permissions.administrator:
-        # Show permission required message instead of the admin page
         embed = discord.Embed(
             title="🔒 ADMIN COMMANDS - Page 3/3",
             description="**Administrator Permissions Required**\n\nYou need the Administrator permission to view this page.",
@@ -405,77 +409,67 @@ async def cmds_list(ctx, page: int = 1):
         embed.set_footer(text="Page 3/3 • React with ◀️ to go back")
         
         message = await ctx.send(embed=embed)
-        
-        # Only add back arrow
         await message.add_reaction("◀️")
         
-        # Wait for reaction input
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) == "◀️" and reaction.message.id == message.id
         
         try:
-            reaction, user = await bot.wait_for("reaction_add", timeout=15.0, check=check)
-            await message.delete()
-            await cmds_list(ctx, page=2)  # Go back to page 2
+            while True:  # keep looping until timeout
+                reaction, user = await bot.wait_for("reaction_add", timeout=20.0, check=check)
+                if str(reaction.emoji) == "◀️":
+                    await message.delete()
+                    await cmds_list(ctx, page=2, from_reaction=True)
+                    return
         except asyncio.TimeoutError:
             try:
-                await message.clear_reactions()
+                await message.delete()
             except:
                 pass
         return
     
+    # Build current page embed
     current_page = pages[page-1]
-    
     embed = discord.Embed(
         title=current_page["title"],
         description=current_page["description"],
         color=discord.Color.blurple() if not current_page["restricted"] else discord.Color.gold()
     )
-    
     for name, value, inline in current_page["fields"]:
         embed.add_field(name=name, value=value, inline=inline)
-    
     embed.set_footer(text=f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate")
     
-    # Send the embed
     message = await ctx.send(embed=embed)
     
-    # Add reactions for navigation if there are multiple pages
+    # Reaction navigation
     if len(pages) > 1:
-        # Only add left arrow if not on first page
         if page > 1:
             await message.add_reaction("◀️")
-        
-        # Only add right arrow if not on last page and has permissions for next page
         if page < len(pages):
             next_page_restricted = pages[page]["restricted"]
             has_permissions = not next_page_restricted or ctx.author.guild_permissions.administrator
-            
             if has_permissions:
                 await message.add_reaction("▶️")
-            else:
-                # User doesn't have permissions for next page, don't show arrow
-                pass
         
-        # Wait for reaction input
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
         
         try:
-            reaction, user = await bot.wait_for("reaction_add", timeout=30.0, check=check)
-            
-            if str(reaction.emoji) == "▶️" and page < len(pages):
-                await message.delete()
-                await cmds_list(ctx, page + 1)
-            elif str(reaction.emoji) == "◀️" and page > 1:
-                await message.delete()
-                await cmds_list(ctx, page - 1)
-                
+            while True:  # reset timer with each reaction
+                reaction, user = await bot.wait_for("reaction_add", timeout=20.0, check=check)
+                if str(reaction.emoji) == "▶️" and page < len(pages):
+                    await message.delete()
+                    await cmds_list(ctx, page + 1, from_reaction=True)
+                    return
+                elif str(reaction.emoji) == "◀️" and page > 1:
+                    await message.delete()
+                    await cmds_list(ctx, page - 1, from_reaction=True)
+                    return
         except asyncio.TimeoutError:
             try:
-                await message.clear_reactions()
+                await message.delete()
             except:
-                pass  # Ignore if message was already deleted
+                pass
 
 # === Start Everything ===
 keep_alive()
@@ -485,3 +479,4 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
