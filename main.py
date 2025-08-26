@@ -403,7 +403,7 @@ async def meme(ctx):
 async def x(ctx):
     await ctx.message.delete()
     message = (
-        "🛡️ **XERO Protection System**\n"
+        "🛡️ **𝘟 𝘎𝘶𝘢𝘳𝘥 𝘗𝘳𝘰𝘵𝘦𝘤𝘵𝘪𝘰𝘯 𝘚𝘺𝘴𝘵𝘦𝘮**\n"
         "DDoS Protection Activated ✅\n"
         "All servers are safe and monitored."
     )
@@ -421,7 +421,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
     # Define pages
     pages = [
         {
-            "title": "📜 XERO Bot Commands - Page 1/3",
+            "title": "𝘟 𝘎𝘶𝘢𝘳𝘥 𝘊𝘰𝘮𝘮𝘢𝘯𝘥𝘴 - Page 1/3",
             "description": "General Commands",
             "fields": [
                 ("⛉ $x", "Shows DDoS protection status", False),
@@ -433,7 +433,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
             ]
         },
         {
-            "title": "📜 XERO Bot Commands - Page 2/3",
+            "title": "𝘟 𝘎𝘶𝘢𝘳𝘥 𝘊𝘰𝘮𝘮𝘢𝘯𝘥𝘴 - Page 2/3",
             "description": "Entertainment Commands",
             "fields": [
                 ("🎭 $joke", "Tell a random joke", False),
@@ -476,8 +476,12 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
     for name, value, inline in current_page["fields"]:
         embed.add_field(name=name, value=value, inline=inline)
     
-    embed.set_footer(text=f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate")
-    
+    footer_text = f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate"
+    if page == 1:  # Only add credit on first page
+        footer_text += " • 𝘮𝘢𝘥𝘦 𝘣𝘺 𝘹𝘦𝘳𝘰"
+        
+    embed.set_footer(text=footer_text)
+
     message = await ctx.send(embed=embed)
     
     # Reaction navigation for everyone
@@ -528,6 +532,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
