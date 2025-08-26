@@ -444,7 +444,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
         },
         {
             "title": "🔒 ADMIN ONLY COMMANDS - Page 3/3",
-            "description": "Admin-only commands ⚠️",
+            "description": "⚠️",
             "fields": [
                 ("✗ $presence", "Change bot status (Admin)", False),
                 ("☣︎ $purge [amount]", "Purge messages (Admin)", False),
@@ -528,6 +528,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
