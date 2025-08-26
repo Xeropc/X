@@ -92,14 +92,9 @@ statuses = itertools.cycle(statuses_list)
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     await asyncio.sleep(2)  # tiny wait to avoid race conditions
-    change_status.start()
     save_reputation_periodically.start()
     decay_reputation.start()
 
-@tasks.loop(minutes=22)  # changes every 22 minutes
-async def change_status():
-    await bot.change_presence(activity=next(statuses))
-        
 # === Reputation System ===
 last_active = {}        # Tracks last activity timestamp
 MAX_REP = 1000          # Maximum reputation cap
@@ -562,3 +557,4 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
