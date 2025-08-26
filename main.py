@@ -542,7 +542,7 @@ async def guide(ctx):
     
     embed.set_footer(text="Use $cmds for a quick command list • Made by xero")
     
-    await ctx.send(embed=embed, delete_after=120)
+    await ctx.send(embed=embed)
 
 @bot.command(name="cmds")
 async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
@@ -669,6 +669,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
