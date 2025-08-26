@@ -137,6 +137,7 @@ async def ping(ctx):
 @commands.has_permissions(ban_members=True)
 async def ban(ctx, member: discord.Member, *, reason="No reason provided"):
     """Ban a member from the server"""
+    await ctx.message.delete()
     await member.ban(reason=reason)
     await ctx.send(f"✅ Banned {member.mention} | Reason: {reason}", delete_after=10)
 
@@ -144,13 +145,15 @@ async def ban(ctx, member: discord.Member, *, reason="No reason provided"):
 @commands.has_permissions(kick_members=True)
 async def kick(ctx, member: discord.Member, *, reason="No reason provided"):
     """Kick a member from the server"""
+    await ctx.message.delete()
     await member.kick(reason=reason)
     await ctx.send(f"✅ Kicked {member.mention} | Reason: {reason}", delete_after=10)
 
 @bot.command()
 @commands.has_permissions(manage_messages=True)
 async def mute(ctx, member: discord.Member, duration: int = 10):
-    """Temporarily mute a member (in minutes)"""
+    """Temporarily mute a member (in minutes)"""\
+    await ctx.message.delete()
     muted_role = discord.utils.get(ctx.guild.roles, name="Muted")
     if not muted_role:
         muted_role = await ctx.guild.create_role(name="Muted")
@@ -169,6 +172,7 @@ async def mute(ctx, member: discord.Member, duration: int = 10):
 @commands.has_permissions(manage_messages=True)
 async def unmute(ctx, member: discord.Member):
     """Unmute a previously muted member"""
+    await ctx.message.delete()
     muted_role = discord.utils.get(ctx.guild.roles, name="Muted")
     
     if not muted_role:
@@ -186,6 +190,7 @@ async def unmute(ctx, member: discord.Member):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def presence(ctx):
+    await ctx.message.delete()
     embed = discord.Embed(
         title="Presence Manager",
         description="Select a status to set",
@@ -264,6 +269,7 @@ async def user(ctx, member: discord.Member = None):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setstatus(ctx, number: int):
+    await ctx.message.delete()
     if 1 <= number <= len(statuses_list):
         activity = statuses_list[number - 1]
         await bot.change_presence(activity=activity)
@@ -438,15 +444,15 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
         },
         {
             "title": "🔒 ADMIN ONLY COMMANDS - Page 3/3",
-            "description": "**⚠️ Administrator Permissions Required**\n*You'll get an error if you try to use these without permission*",
+            "description": "Admin-only commands ⚠️",
             "fields": [
-                ("✗ $presence", "Change status of 𝘟 𝘎𝘶𝘢𝘳𝘥", False),
-                ("☣︎ $purge [amount]", "Purge messages", False),
-                ("🛡️ $ban @user [reason]", "Ban a member", False),
-                ("👢 $kick @user [reason]", "Kick a member", False),
-                ("🔇 $mute @user [minutes]", "Temporarily mute a member", False),
-                ("🔊 $unmute @user", "Unmute a muted member", False),
-                ("⚙️ $setstatus [number]", "Set bot status manually", False),
+                ("✗ $presence", "Change bot status (Admin)", False),
+                ("☣︎ $purge [amount]", "Purge messages (Admin)", False),
+                ("🛡️ $ban @user [reason]", "Ban a member (Admin)", False),
+                ("👢 $kick @user [reason]", "Kick a member (Admin)", False),
+                ("🔇 $mute @user [minutes]", "Temporarily mute a member (Admin)", False),
+                ("🔊 $unmute @user", "Unmute a muted member (Admin)", False),
+                ("⚙️ $setstatus [number]", "Set bot status manually (Admin)", False),
             ]
         }
     ]
@@ -463,9 +469,9 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
         color=discord.Color.blurple()
     )
     
-    # If it's Page 3 and user is NOT an admin, append warning
+    # If it's Page 3 and user is NOT an admin, append a single warning
     if page == 3 and not ctx.author.guild_permissions.administrator:
-        embed.description += "\n⚠️ You won’t be able to use these commands"
+        embed.description += " — You cannot use these commands"
     
     for name, value, inline in current_page["fields"]:
         embed.add_field(name=name, value=value, inline=inline)
@@ -522,6 +528,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
