@@ -562,9 +562,9 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
                 ("⛉ $x", "Shows DDoS protection status", False),
                 ("✦ $rep [user]", "View your reputation or members", False),
                 ("✚ $status", "Server health dashboard", False),
-                ("ⓘ $guide", "System Help Guide", False),
+                ("🛈 $guide", "System Help Guide", False),
                 ("𝗓𐰁 $ping", "Check if the bot is awake", False),
-                ("𝗓𐰁 $user [user]", "View user details", False),
+                ("★ $user [user]", "View user details", False),
                 ("☰ $cmds", "Displays this command list", False),
             ]
         },
@@ -669,6 +669,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
