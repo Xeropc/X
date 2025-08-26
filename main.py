@@ -52,7 +52,7 @@ bot = commands.Bot(command_prefix="$", intents=intents)
 
 # List of statuses for embeds / manual selection
 statuses_list = [
-    discord.Streaming(name="X", url="https://www.twitch.tv/error"),
+    discord.Streaming(name="$", url="https://www.twitch.tv/error"),
     discord.Activity(type=discord.ActivityType.watching, name="Servers"),
 ]
 
@@ -528,6 +528,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
