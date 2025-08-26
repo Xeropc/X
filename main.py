@@ -412,7 +412,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
         except discord.NotFound:
             pass
     
-    # Define pages - REMOVE THE "restricted" FLAGS
+    # Define pages
     pages = [
         {
             "title": "📜 XERO Bot Commands - Page 1/3",
@@ -463,6 +463,10 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
         color=discord.Color.blurple()
     )
     
+    # If it's Page 3 and user is NOT an admin, append warning
+    if page == 3 and not ctx.author.guild_permissions.administrator:
+        embed.description += "\n⚠️ You won’t be able to use these commands"
+    
     for name, value, inline in current_page["fields"]:
         embed.add_field(name=name, value=value, inline=inline)
     
@@ -500,11 +504,25 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
 # === Start Everything ===
 keep_alive()
 
+# Global error handler
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You need the required permissions to use this command.", delete_after=7)
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("❌ Missing arguments for this command.", delete_after=7)
+    elif isinstance(error, commands.CommandNotFound):
+        await ctx.send("❌ Unknown command.", delete_after=5)
+    else:
+        # Optional: print other errors for debugging
+        print(f"Unhandled error: {error}")
+
 token = os.getenv("TOKEN")
 if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
