@@ -10,7 +10,11 @@ import itertools
 import random
 import aiohttp
 import json
-import atexit
+
+# === Discord Bot Setup (MUST COME FIRST) ===
+intents = discord.Intents.all()
+intents.message_content = True
+bot = commands.Bot(command_prefix="$", intents=intents)
 
 # reputation save
 def load_reputation():
@@ -25,14 +29,32 @@ def load_reputation():
 
 def save_reputation():
     """Save reputation data to file"""
+    print("💾 Saving reputation data...")
     with open('reputation.json', 'w') as f:
         json.dump(reputation, f)
+    print("💾 Save complete!")
 
 # Load reputation data when bot starts
 reputation = load_reputation()
+last_active = {}        # Tracks last activity timestamp
+MAX_REP = 1000          # Maximum reputation cap
 
 # Register save function to run when bot shuts down
-atexit.register(save_reputation)
+@bot.event
+async def on_disconnect():
+    print("Bot disconnecting - saving reputation data...")
+    save_reputation()
+
+@bot.event
+async def close():
+    print("Bot closing - performing final save...")
+    save_reputation()
+    await bot.close()
+
+@bot.event
+async def on_error(event, *args, **kwargs):
+    print(f"Error occurred in {event} - emergency save!")
+    save_reputation()
 
 @tasks.loop(minutes=5)  # Save every 5 minutes
 async def save_reputation_periodically():
@@ -74,11 +96,6 @@ def keep_alive():
     pinger.daemon = True
     pinger.start()
 
-# === Discord Bot ===
-intents = discord.Intents.all()
-intents.message_content = True
-bot = commands.Bot(command_prefix="$", intents=intents)
-
 # List of statuses for embeds / manual selection
 statuses_list = [
     discord.Streaming(name="$", url="https://www.twitch.tv/error"),
@@ -94,10 +111,6 @@ async def on_ready():
     await asyncio.sleep(2)  # tiny wait to avoid race conditions
     save_reputation_periodically.start()
     decay_reputation.start()
-
-# === Reputation System ===
-last_active = {}        # Tracks last activity timestamp
-MAX_REP = 1000          # Maximum reputation cap
 
 # Increment reputation when a user sends a message
 @bot.event
@@ -117,6 +130,9 @@ async def on_message(message):
 
     # Update last active timestamp
     last_active[user_id] = now
+    
+    # === CRITICAL: SAVE IMMEDIATELY AFTER CHANGING DATA ===
+    save_reputation()
 
     await bot.process_commands(message)
 
@@ -124,12 +140,19 @@ async def on_message(message):
 @tasks.loop(minutes=30)
 async def decay_reputation():
     now = time.time()
+    decayed = False
+    
     for user_id in list(reputation.keys()):
         last = last_active.get(user_id, now)
         # Decay 5 points for every 30 minutes of inactivity
         if now - last > 1800:
             reputation[user_id] = max(reputation[user_id] - 5, 100)
-
+            decayed = True
+    
+    # Only save if changes were actually made
+    if decayed:
+        save_reputation()
+        
 # Command to check reputation
 @bot.command()
 async def rep(ctx, member: discord.Member = None):
@@ -156,6 +179,14 @@ async def status(ctx):
 async def ping(ctx):
     await ctx.message.delete()
     await ctx.send("I'm still awake and watching servers.", delete_after=4)
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def save(ctx):
+    """Manually save all reputation data to prevent data loss"""
+    save_reputation()
+    await ctx.send("💾 All reputation data saved!", delete_after=3)
+    await ctx.message.delete()
 
 # === Advanced Moderation ===
 @bot.command()
@@ -454,7 +485,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
                 ("✚ $status", "Server health dashboard", False),
                 ("𝗓𐰁 $ping", "Check if the bot is awake", False),
                 ("𝗓𐰁 $user [user]", "View user details", False),
-                ("☰ $cmds [page]", "Displays this command list", False),
+                ("☰ $cmds", "Displays this command list", False),
             ]
         },
         {
@@ -471,13 +502,14 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
             "title": "🔒 ADMIN ONLY COMMANDS",
             "description": "",
             "fields": [
-                ("✗ $presence", "Change bot status (Admin)", False),
-                ("☣︎ $purge [amount]", "Purge messages (Admin)", False),
-                ("🛡️ $ban @user [reason]", "Ban a member (Admin)", False),
-                ("👢 $kick @user [reason]", "Kick a member (Admin)", False),
-                ("🔇 $mute @user [minutes]", "Temporarily mute a member (Admin)", False),
-                ("🔊 $unmute @user", "Unmute a muted member (Admin)", False),
-                ("⚙️ $setstatus [number]", "Set bot status manually (Admin)", False),
+                ("✗ $presence", "View 𝘟 𝘎𝘶𝘢𝘳𝘥 status", False),
+                ("⚙️ $setstatus [number]", "Set 𝘟 𝘎𝘶𝘢𝘳𝘥 status", False),
+                ("☣︎ $purge [amount]", "Purge messages", False),
+                ("🛡️ $ban @user [reason]", "Ban a member", False),
+                ("👢 $kick @user [reason]", "Kick a member", False),
+                ("🔇 $mute @user [minutes]", "Temporarily mute a member", False),
+                ("🔊 $unmute @user", "Unmute a muted member", False),
+                ("💾 $save", "Manually save reputation data (optional)", False),
             ]
         }
     ]
@@ -557,4 +589,5 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
