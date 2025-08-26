@@ -465,6 +465,84 @@ async def x(ctx):
     )
     await ctx.send(message, delete_after=4)
 
+@bot.command()
+async def guide(ctx):
+    """Get detailed information about the bot's systems"""
+    await ctx.message.delete()
+    
+    embed = discord.Embed(
+        title="🛡️ 𝘟 𝘎𝘶𝘢𝘳𝘥 - System Help Guide",
+        description="Learn how the bot's systems work and how to use them effectively",
+        color=discord.Color.blue()
+    )
+    
+    # Reputation System Section
+    embed.add_field(
+        name="📊 **Reputation System**",
+        value=(
+            "**How it works:**\n"
+            "• Gain **1+ reputation points** for each message you send\n"
+            "• **Longer messages** give more points (1 point per 10 characters)\n"
+            "• **Inactive users** lose 5 points every 30 minutes\n"
+            "• **Minimum reputation** is 100 points\n"
+            "• Check your reputation with `$rep`\n"
+            "• **Your reputation represents your activity level** in the server"
+        ),
+        inline=False
+    )
+    
+    # Moderation Section
+    embed.add_field(
+        name="⚖️ **𝘟 𝘎𝘶𝘢𝘳𝘥 Auto Moderation (Built-In)**",
+        value=(
+            "**Auto-protection:**\n"
+            "• Raid detection system\n"
+            "• Suspicious account monitoring"
+        ),
+        inline=False
+    )
+    
+    # Utility Section
+    embed.add_field(
+        name="🔧 **Utility Commands**",
+        value=(
+            "• `$user [@user]` - View user information\n"
+            "• `$status` - Server health dashboard\n"
+            "• `$ping` - Check bot responsiveness\n"
+            "• `$x` - DDoS protection status\n"
+            "• `$save` - Manual data backup (Admin only)"
+        ),
+        inline=False
+    )
+    
+    # Entertainment Section
+    embed.add_field(
+        name="🎮 **Entertainment**",
+        value=(
+            "• `$joke` - Get a random joke\n"
+            "• `$coinflip` - Flip a coin\n"
+            "• `$dice [sides]` - Roll dice\n"
+            "• `$meme` - Random meme\n"
+        ),
+        inline=False
+    )
+    
+    # Bot Status Section
+    embed.add_field(
+        name="🤖 **Status**",
+        value=(
+            "• **24/7 operation** with auto-recovery\n"
+            "• **Data automatically saved** multiple times\n"
+            "• **Periodic maintenance** every 30 minutes\n"
+            "• **Uptime monitoring** with health checks"
+        ),
+        inline=False
+    )
+    
+    embed.set_footer(text="Use $cmds for a quick command list • Made by xero")
+    
+    await ctx.send(embed=embed, delete_after=45)
+
 @bot.command(name="cmds")
 async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
     # Only delete the command message if this was typed manually
@@ -481,8 +559,9 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
             "description": "",
             "fields": [
                 ("⛉ $x", "Shows DDoS protection status", False),
-                ("✦ $rep [user]", "Check a member's reputation", False),
+                ("✦ $rep [user]", "View your reputation or members", False),
                 ("✚ $status", "Server health dashboard", False),
+                ("ⓘ $guide", "System Help Guide", False),
                 ("𝗓𐰁 $ping", "Check if the bot is awake", False),
                 ("𝗓𐰁 $user [user]", "View user details", False),
                 ("☰ $cmds", "Displays this command list", False),
@@ -589,5 +668,6 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
