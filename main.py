@@ -421,8 +421,8 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
     # Define pages
     pages = [
         {
-            "title": "𝘟 𝘎𝘶𝘢𝘳𝘥 𝘊𝘰𝘮𝘮𝘢𝘯𝘥𝘴 - Page 1/3",
-            "description": "General Commands",
+            "title": "𝘎𝘦𝘯𝘦𝘳𝘢𝘭 𝘊𝘰𝘮𝘮𝘢𝘯𝘥𝘴",
+            "description": "",
             "fields": [
                 ("⛉ $x", "Shows DDoS protection status", False),
                 ("✦ $rep [user]", "Check a member's reputation", False),
@@ -433,8 +433,8 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
             ]
         },
         {
-            "title": "𝘟 𝘎𝘶𝘢𝘳𝘥 𝘊𝘰𝘮𝘮𝘢𝘯𝘥𝘴 - Page 2/3",
-            "description": "Entertainment Commands",
+            "title": "𝘌𝘯𝘵𝘦𝘳𝘵𝘢𝘪𝘯𝘮𝘦𝘯𝘵 𝘊𝘰𝘮𝘮𝘢𝘯𝘥𝘴",
+            "description": "",
             "fields": [
                 ("🎭 $joke", "Tell a random joke", False),
                 ("🪙 $coinflip", "Flip a coin", False),
@@ -443,7 +443,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
             ]
         },
         {
-            "title": "🔒 ADMIN ONLY COMMANDS - Page 3/3",
+            "title": "🔒 ADMIN ONLY COMMANDS",
             "description": "",
             "fields": [
                 ("✗ $presence", "Change bot status (Admin)", False),
@@ -532,6 +532,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
