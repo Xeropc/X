@@ -625,7 +625,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
     )
 
     if page == 1 and ctx.guild.icon:
-    embed.set_thumbnail(url=ctx.guild.icon.url)
+        embed.set_thumbnail(url=ctx.guild.icon.url)
     
     # If it's Page 3 and user is NOT an admin, append a single warning
     if page == 3 and not ctx.author.guild_permissions.administrator:
@@ -690,4 +690,5 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
