@@ -763,7 +763,7 @@ async def cmds_list(ctx):
     pages = [
         {
             "title": "𝘎𝘦𝘯𝘦𝘳𝘢𝘭 𝘊𝘰𝘮𝘮𝘢𝘯𝘥𝘴",
-            "description": "",
+            "description": " ",
             "fields": [
                 ("⛉ $x", "Shows DDoS protection status", False),
                 ("✦ $rep [user]", "View your reputation or members", False),
@@ -776,7 +776,7 @@ async def cmds_list(ctx):
         },
         {
             "title": "𝘌𝘯𝘵𝘦𝘳𝘵𝘢𝘪𝘯𝘮𝘦𝘯𝘵 𝘊𝘰𝘮𝘮𝘢𝘯𝘥𝘴",
-            "description": "",
+            "description": " ",
             "fields": [
                 ("🎭 $joke", "Tell a random joke", False),
                 ("🪙 $coinflip", "Flip a coin", False),
@@ -786,7 +786,7 @@ async def cmds_list(ctx):
         },
         {
             "title": "🎵 Music Commands",
-            "description": "",
+            "description": " ",
             "fields": [
                 ("▶️ $play [song]", "Play music from YouTube", False),
                 ("⏭️ $skip", "Skip current song", False),
@@ -800,7 +800,7 @@ async def cmds_list(ctx):
         },
         {
             "title": "🔒 ADMIN ONLY COMMANDS",
-            "description": "",
+            "description": " ",
             "fields": [
                 ("✗ $presence", "View 𝘟 𝘎𝘶𝘢𝘳𝘥 status", False),
                 ("⚙️ $setstatus [number]", "Set 𝘟 𝘎𝘶𝘢𝘳𝘥 status", False),
@@ -903,6 +903,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
