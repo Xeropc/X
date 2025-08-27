@@ -185,23 +185,15 @@ FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
     'options': '-vn -filter:a "volume=0.25"'
 }
-YTDL_OPTIONS = {
-    'format': 'bestaudio/best',
-    'extractaudio': True,
-    'audioformat': 'mp3',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'ytsearch',
-    'source_address': '0.0.0.0',
+ytdl_format_options = {
+    "format": "bestaudio/best",
+    "noplaylist": True,
+    "default_search": "ytsearch",  # <--- this forces search
+    "quiet": True,
+    "extract_flat": False,
 }
 
-ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
+ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
@@ -290,7 +282,7 @@ async def play_next(ctx):
         # Play the audio
         ctx.voice_client.play(
     player,
-    after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx.guild.id), bot.loop)
+    after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop)
 )
         
         # Send playing message
@@ -760,7 +752,7 @@ async def guide(ctx):
     await ctx.send(embed=embed)
 
 @bot.command(name="cmds")
-async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
+async def cmds_list(ctx, page: int = 1, from_reaction: bool = False, message=None):
     # Only delete the command message if this was typed manually
     if not from_reaction:
         try:
@@ -794,21 +786,6 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
             ]
         },
         {
-            "title": "🔒 ADMIN ONLY COMMANDS",
-            "description": "",
-            "fields": [
-                ("✗ $presence", "View 𝘟 𝘎𝘶𝘢𝘳𝘥 status", False),
-                ("⚙️ $setstatus [number]", "Set 𝘟 𝘎𝘶𝘢𝘳𝘥 status", False),
-                ("☣︎ $purge [amount]", "Purge messages", False),
-                ("🛡️ $ban @user [reason]", "Ban a member", False),
-                ("🛡️ $unban [userID] [reason]", "Unban a user by their ID", False),
-                ("👢 $kick @user [reason]", "Kick a member", False),
-                ("🔇 $mute @user [minutes]", "Temporarily mute a member", False),
-                ("🔊 $unmute @user", "Unmute a muted member", False),
-                ("💾 $save", "Manually save reputation data (optional)", False),
-            ]
-        },
-        {  # ADDED COMMA HERE - this was the missing comma
             "title": "🎵 Music Commands",
             "description": "",
             "fields": [
@@ -822,60 +799,81 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
                 ("🔊 $join", "Join voice channel", False),
                 ("🚪 $leave", "Leave voice channel", False)
             ]
+        },
+        {
+            "title": "🔒 ADMIN ONLY COMMANDS",
+            "description": "",
+            "fields": [
+                ("✗ $presence", "View 𝘟 𝘎𝘶𝘢𝘳𝘥 status", False),
+                ("⚙️ $setstatus [number]", "Set 𝘟 𝘎𝘶𝘢𝘳𝘥 status", False),
+                ("☣︎ $purge [amount]", "Purge messages", False),
+                ("🛡️ $ban @user [reason]", "Ban a member", False),
+                ("🛡️ $unban [userID] [reason]", "Unban a user by their ID", False),
+                ("👢 $kick @user [reason]", "Kick a member", False),
+                ("🔇 $mute @user [minutes]", "Temporarily mute a member", False),
+                ("🔊 $unmute @user", "Unmute a muted member", False),
+                ("💾 $save", "Manually save reputation data (optional)", False),
+            ]
         }
     ]
     
-    # Validate page number
+    # Clamp page number
     if page < 1 or page > len(pages):
         page = 1
-    
-    # Build current page embed - ALWAYS show all pages to everyone
+
+    # Build embed
     current_page = pages[page-1]
     embed = discord.Embed(
         title=current_page["title"],
         description=current_page["description"],
         color=discord.Color.blurple()
     )
-    
-    # If it's Page 3 and user is NOT an admin, append a single warning
-    if page == 3 and not ctx.author.guild_permissions.administrator:
+
+    # Admin-only page warning
+    if page == 4 and not ctx.author.guild_permissions.administrator:
         embed.description += " — You cannot use these commands"
     
     for name, value, inline in current_page["fields"]:
         embed.add_field(name=name, value=value, inline=inline)
     
     footer_text = f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate"
-    if page == 1:  # Only add credit on first page
+    if page == 1:
         footer_text += " • 𝘮𝘢𝘥𝘦 𝘣𝘺 𝘹𝘦𝘳𝘰"
         
     embed.set_footer(text=footer_text)
 
-    message = await ctx.send(embed=embed)
-    
-    # Reaction navigation for everyone
+    # Send or edit the embed
+    if from_reaction:
+        await ctx.message.edit(embed=embed)
+        message = ctx.message
+    else:
+        message = await ctx.send(embed=embed)
+
+    # Add navigation reactions
     if len(pages) > 1:
         if page > 1:
             await message.add_reaction("◀️")
         if page < len(pages):
             await message.add_reaction("▶️")
-        
+
         def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
+            return (
+                user == ctx.author
+                and str(reaction.emoji) in ["◀️", "▶️"]
+                and reaction.message.id == message.id
+            )
         
         try:
-            while True:
-                reaction, user = await bot.wait_for("reaction_add", timeout=20.0, check=check)
-                if str(reaction.emoji) == "▶️" and page < len(pages):
-                    await message.delete()
-                    await cmds_list(ctx, page + 1, from_reaction=True)
-                    return
-                elif str(reaction.emoji) == "◀️" and page > 1:
-                    await message.delete()
-                    await cmds_list(ctx, page - 1, from_reaction=True)
-                    return
+            reaction, user = await bot.wait_for("reaction_add", timeout=20.0, check=check)
+            if str(reaction.emoji) == "▶️" and page < len(pages):
+                await message.clear_reactions()
+                await cmds_list(ctx, page + 1, from_reaction=True)
+            elif str(reaction.emoji) == "◀️" and page > 1:
+                await message.clear_reactions()
+                await cmds_list(ctx, page - 1, from_reaction=True)
         except asyncio.TimeoutError:
             try:
-                await message.delete()
+                await message.clear_reactions()
             except:
                 pass
     
@@ -900,3 +898,4 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
