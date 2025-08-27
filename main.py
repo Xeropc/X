@@ -759,7 +759,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False, message=Non
             await ctx.message.delete()
         except discord.NotFound:
             pass
-    
+
     # Define pages
     pages = [
         {
@@ -816,13 +816,13 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False, message=Non
             ]
         }
     ]
-    
+
     # Clamp page number
     if page < 1 or page > len(pages):
         page = 1
 
     # Build embed
-    current_page = pages[page-1]
+    current_page = pages[page - 1]
     embed = discord.Embed(
         title=current_page["title"],
         description=current_page["description"],
@@ -832,20 +832,18 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False, message=Non
     # Admin-only page warning
     if page == 4 and not ctx.author.guild_permissions.administrator:
         embed.description += " — You cannot use these commands"
-    
+
     for name, value, inline in current_page["fields"]:
         embed.add_field(name=name, value=value, inline=inline)
-    
+
     footer_text = f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate"
     if page == 1:
         footer_text += " • 𝘮𝘢𝘥𝘦 𝘣𝘺 𝘹𝘦𝘳𝘰"
-        
     embed.set_footer(text=footer_text)
 
     # Send or edit the embed
-    if from_reaction:
-        await ctx.message.edit(embed=embed)
-        message = ctx.message
+    if from_reaction and message:
+        await message.edit(embed=embed)
     else:
         message = await ctx.send(embed=embed)
 
@@ -862,15 +860,15 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False, message=Non
                 and str(reaction.emoji) in ["◀️", "▶️"]
                 and reaction.message.id == message.id
             )
-        
+
         try:
             reaction, user = await bot.wait_for("reaction_add", timeout=20.0, check=check)
             if str(reaction.emoji) == "▶️" and page < len(pages):
                 await message.clear_reactions()
-                await cmds_list(ctx, page + 1, from_reaction=True)
+                await cmds_list(ctx, page + 1, from_reaction=True, message=message)
             elif str(reaction.emoji) == "◀️" and page > 1:
                 await message.clear_reactions()
-                await cmds_list(ctx, page - 1, from_reaction=True)
+                await cmds_list(ctx, page - 1, from_reaction=True, message=message)
         except asyncio.TimeoutError:
             try:
                 await message.clear_reactions()
@@ -898,4 +896,5 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
