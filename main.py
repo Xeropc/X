@@ -10,9 +10,6 @@ import itertools
 import random
 import aiohttp
 import json
-import yt_dlp
-from collections import deque
-FFMPEG_BINARY = "ffmpeg"
 
 # === Discord Bot Setup (MUST COME FIRST) ===
 intents = discord.Intents.all()
@@ -47,6 +44,12 @@ MAX_REP = 1000          # Maximum reputation cap
 async def on_disconnect():
     print("Bot disconnecting - saving reputation data...")
     save_reputation()
+
+@bot.event
+async def close():
+    print("Bot closing - performing final save...")
+    save_reputation()
+    await bot.close()
 
 @bot.event
 async def on_error(event, *args, **kwargs):
@@ -108,14 +111,6 @@ async def on_ready():
     await asyncio.sleep(2)  # tiny wait to avoid race conditions
     save_reputation_periodically.start()
     decay_reputation.start()
-
-    # Verify ffmpeg
-    import subprocess
-    try:
-        output = subprocess.check_output([FFMPEG_BINARY, "-version"])
-        print(f"🎵 FFmpeg is ready:\n{output.decode().splitlines()[0]}")
-    except Exception as e:
-        print(f"❌ FFmpeg check failed: {e}")
 
 # Increment reputation when a user sends a message
 @bot.event
@@ -184,200 +179,6 @@ async def status(ctx):
 async def ping(ctx):
     await ctx.message.delete()
     await ctx.send("I'm still awake and watching servers.", delete_after=4)
-
-# === MUSIC ===
-# Music player state
-music_queues = {}
-now_playing = {}
-player_tasks = {}
-FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn -filter:a "volume=0.25"'
-}
-ytdl_format_options = {
-    "format": "bestaudio/best",
-    "noplaylist": True,
-    "default_search": "ytsearch",  # <--- this forces search
-    "quiet": True,
-    "extract_flat": False,
-}
-
-ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
-
-class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.5):
-        super().__init__(source, volume)
-        self.data = data
-        self.title = data.get('title')
-        self.url = data.get('url')
-
-    @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
-        loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-        
-        if 'entries' in data:
-            data = data['entries'][0]
-            
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, executable=FFMPEG_BINARY, **FFMPEG_OPTIONS), data=data)
-
-# Music commands
-@bot.command()
-async def join(ctx):
-    """Join the voice channel"""
-    await ctx.message.delete()
-    if not ctx.author.voice:
-        await ctx.send("❌ You need to be in a voice channel to use this command.", delete_after=7)
-        return
-    
-    channel = ctx.author.voice.channel
-    if ctx.voice_client is not None:
-        await ctx.voice_client.move_to(channel)
-    else:
-        await channel.connect()
-    
-    await ctx.send(f"✅ Joined {channel.name}", delete_after=7)
-
-@bot.command()
-async def leave(ctx):
-    """Leave the voice channel"""
-    await ctx.message.delete()
-    if ctx.voice_client is not None:
-        await ctx.voice_client.disconnect()
-        await ctx.send("✅ Left the voice channel", delete_after=7)
-    else:
-        await ctx.send("❌ I'm not in a voice channel.", delete_after=7)
-
-@bot.command()
-async def play(ctx, *, query):
-    """Play music from YouTube"""
-    await ctx.message.delete()
-    
-    # Ensure bot is in voice channel
-    if not ctx.author.voice:
-        await ctx.send("❌ You need to be in a voice channel to use this command.", delete_after=7)
-        return
-        
-    if ctx.voice_client is None:
-        await ctx.author.voice.channel.connect()
-    
-    # Get guild queue or create new one
-    if ctx.guild.id not in music_queues:
-        music_queues[ctx.guild.id] = deque()
-    
-    # Add to queue
-    try:
-        async with ctx.typing():
-            player = await YTDLSource.from_url(query, loop=bot.loop, stream=True)
-            music_queues[ctx.guild.id].append(player)
-            
-            if not ctx.voice_client.is_playing():
-                await play_next(ctx)
-            else:
-                await ctx.send(f"🎵 Added to queue: **{player.title}**", delete_after=10)
-                
-    except Exception as e:
-        print(f"Error playing music: {e}")
-        await ctx.send("❌ Could not play the requested audio.", delete_after=7)
-
-async def play_next(ctx):
-    if ctx.guild.id in music_queues and music_queues[ctx.guild.id]:
-        player = music_queues[ctx.guild.id].popleft()
-        
-        # Store what's currently playing
-        now_playing[ctx.guild.id] = player
-        
-        # Play the audio
-        ctx.voice_client.play(
-    player,
-    after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop)
-)
-        
-        # Send playing message
-        await ctx.send(f"🎵 Now playing: **{player.title}**", delete_after=15)
-    else:
-        # Nothing left in queue
-        now_playing[ctx.guild.id] = None
-        await ctx.send("✅ Queue finished.", delete_after=10)
-
-@bot.command()
-async def skip(ctx):
-    """Skip the current song"""
-    await ctx.message.delete()
-    if ctx.voice_client is not None and ctx.voice_client.is_playing():
-        ctx.voice_client.stop()
-        await ctx.send("⏭️ Skipped current song", delete_after=7)
-    else:
-        await ctx.send("❌ Nothing is currently playing.", delete_after=7)
-
-@bot.command()
-async def pause(ctx):
-    """Pause the current song"""
-    await ctx.message.delete()
-    if ctx.voice_client is not None and ctx.voice_client.is_playing():
-        ctx.voice_client.pause()
-        await ctx.send("⏸️ Paused playback", delete_after=7)
-    else:
-        await ctx.send("❌ Nothing is currently playing.", delete_after=7)
-
-@bot.command()
-async def resume(ctx):
-    """Resume playback"""
-    await ctx.message.delete()
-    if ctx.voice_client is not None and ctx.voice_client.is_paused():
-        ctx.voice_client.resume()
-        await ctx.send("▶️ Resumed playback", delete_after=7)
-    else:
-        await ctx.send("❌ Playback is not paused.", delete_after=7)
-
-@bot.command()
-async def stop(ctx):
-    """Stop playback and clear queue"""
-    await ctx.message.delete()
-    if ctx.voice_client is not None:
-        if ctx.guild.id in music_queues:
-            music_queues[ctx.guild.id].clear()
-        ctx.voice_client.stop()
-        await ctx.send("⏹️ Stopped playback and cleared queue", delete_after=7)
-    else:
-        await ctx.send("❌ Nothing is currently playing.", delete_after=7)
-
-@bot.command()
-async def queue(ctx):
-    """Show the current queue"""
-    await ctx.message.delete()
-    if ctx.guild.id in music_queues and music_queues[ctx.guild.id]:
-        queue_list = []
-        for i, player in enumerate(list(music_queues[ctx.guild.id])[:5], 1):
-            queue_list.append(f"{i}. {player.title}")
-        
-        embed = discord.Embed(
-            title="🎵 Music Queue",
-            description="\n".join(queue_list),
-            color=discord.Color.blurple()
-        )
-        if len(music_queues[ctx.guild.id]) > 5:
-            embed.set_footer(text=f"And {len(music_queues[ctx.guild.id]) - 5} more...")
-        
-        await ctx.send(embed=embed, delete_after=15)
-    else:
-        await ctx.send("❌ The queue is empty.", delete_after=7)
-
-@bot.command()
-async def cp(ctx):
-    """Show what's currently playing"""
-    await ctx.message.delete()
-    if ctx.guild.id in now_playing and now_playing[ctx.guild.id]:
-        player = now_playing[ctx.guild.id]
-        embed = discord.Embed(
-            title="🎵 Now Playing",
-            description=player.title,
-            color=discord.Color.green()
-        )
-        await ctx.send(embed=embed, delete_after=15)
-    else:
-        await ctx.send("❌ Nothing is currently playing.", delete_after=7)
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -761,12 +562,15 @@ async def guide(ctx):
     await ctx.send(embed=embed)
 
 @bot.command(name="cmds")
-async def cmds_list(ctx):
-    try:
-        await ctx.message.delete()
-    except discord.NotFound:
-        pass
-
+async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
+    # Only delete the command message if this was typed manually
+    if not from_reaction:
+        try:
+            await ctx.message.delete()
+        except discord.NotFound:
+            pass
+    
+    # Define pages
     pages = [
         {
             "title": "𝘎𝘦𝘯𝘦𝘳𝘢𝘭 𝘊𝘰𝘮𝘮𝘢𝘯𝘥𝘴",
@@ -792,20 +596,6 @@ async def cmds_list(ctx):
             ]
         },
         {
-            "title": "🎵 Music Commands",
-            "description": "",
-            "fields": [
-                ("▶️ $play [song]", "Play music from YouTube", False),
-                ("⏭️ $skip", "Skip current song", False),
-                ("⏸️ $pause", "Pause playback", False),
-                ("⏹️ $stop", "Stop playback and clear queue", False),
-                ("📋 $queue", "Show current queue", False),
-                ("🎶 $cp", "Show currently playing song", False),
-                ("🔊 $join", "Join voice channel", False),
-                ("🚪 $leave", "Leave voice channel", False)
-            ]
-        },
-        {
             "title": "🔒 ADMIN ONLY COMMANDS",
             "description": "",
             "fields": [
@@ -821,67 +611,61 @@ async def cmds_list(ctx):
             ]
         }
     ]
-
-    page = 1
-
-    def get_embed(page_num):
-        current = pages[page_num - 1]
-        embed = discord.Embed(
-            title=current["title"],
-            description=current["description"],
-            color=discord.Color.blurple()
-        )
-
-        # Admin-only warning
-        if page_num == 4 and not ctx.author.guild_permissions.administrator:
-            embed.description += " — You cannot use these commands"
-
-        for name, value, inline in current["fields"]:
-            embed.add_field(name=name, value=value, inline=inline)
-
-        footer_text = f"Page {page_num}/{len(pages)} • React with ◀️ ▶️ to navigate"
-        if page_num == 1:
-            footer_text += " • 𝘮𝘢𝘥𝘦 𝘣𝘺 𝘹𝘦𝘳𝘰"
-        embed.set_footer(text=footer_text)
-        return embed
-
-    message = await ctx.send(embed=get_embed(page))
-
-    if len(pages) > 1:
-        # Add initial reactions
-        await message.add_reaction("◀️")
-        await message.add_reaction("▶️")
-
-        while True:
-            def check(reaction, user):
-                return (
-                    user == ctx.author
-                    and str(reaction.emoji) in ["◀️", "▶️"]
-                    and reaction.message.id == message.id
-                )
-
-            try:
-                reaction, user = await bot.wait_for("reaction_add", timeout=60.0, check=check)
-
-                if str(reaction.emoji) == "▶️" and page < len(pages):
-                    page += 1
-                elif str(reaction.emoji) == "◀️" and page > 1:
-                    page -= 1
-                else:
-                    # Ignore invalid moves
-                    await message.remove_reaction(reaction, user)
-                    continue
-
-                await message.edit(embed=get_embed(page))
-                await message.remove_reaction(reaction, user)
-
-            except asyncio.TimeoutError:
-                try:
-                    await message.clear_reactions()
-                except:
-                    pass
-                break
     
+    # Validate page number
+    if page < 1 or page > len(pages):
+        page = 1
+    
+    # Build current page embed - ALWAYS show all pages to everyone
+    current_page = pages[page-1]
+    embed = discord.Embed(
+        title=current_page["title"],
+        description=current_page["description"],
+        color=discord.Color.blurple()
+    )
+    
+    # If it's Page 3 and user is NOT an admin, append a single warning
+    if page == 3 and not ctx.author.guild_permissions.administrator:
+        embed.description += " — You cannot use these commands"
+    
+    for name, value, inline in current_page["fields"]:
+        embed.add_field(name=name, value=value, inline=inline)
+    
+    footer_text = f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate"
+    if page == 1:  # Only add credit on first page
+        footer_text += " • 𝘮𝘢𝘥𝘦 𝘣𝘺 𝘹𝘦𝘳𝘰"
+        
+    embed.set_footer(text=footer_text)
+
+    message = await ctx.send(embed=embed)
+    
+    # Reaction navigation for everyone
+    if len(pages) > 1:
+        if page > 1:
+            await message.add_reaction("◀️")
+        if page < len(pages):
+            await message.add_reaction("▶️")
+        
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["◀️", "▶️"] and reaction.message.id == message.id
+        
+        try:
+            while True:
+                reaction, user = await bot.wait_for("reaction_add", timeout=20.0, check=check)
+                if str(reaction.emoji) == "▶️" and page < len(pages):
+                    await message.delete()
+                    await cmds_list(ctx, page + 1, from_reaction=True)
+                    return
+                elif str(reaction.emoji) == "◀️" and page > 1:
+                    await message.delete()
+                    await cmds_list(ctx, page - 1, from_reaction=True)
+                    return
+        except asyncio.TimeoutError:
+            try:
+                await message.delete()
+            except:
+                pass
+
 # === Start Everything ===
 keep_alive()
 
@@ -903,13 +687,3 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
-
-
-
-
-
-
-
-
-
-
