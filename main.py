@@ -836,7 +836,7 @@ async def cmds_list(ctx):
 
         # Admin-only page warning
         if page == 4 and not ctx.author.guild_permissions.administrator:
-            embed.description += " — You cannot use these commands"
+            embed.description = (embed.description or "") + " — You cannot use these commands"
 
         for name, value, inline in current_page["fields"]:
             embed.add_field(name=name, value=value, inline=inline)
@@ -904,6 +904,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
