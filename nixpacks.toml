@@ -1,2 +1,7 @@
+[app]
+command = "python bot.py"  # or whatever your bot start command is
+copy_files = ["./ffmpeg"]  # optional, not strictly needed if installing via nixpacks
+
 [packages]
 ffmpeg = "*"
+python = "3.12"  # make sure you use your bot's Python version
