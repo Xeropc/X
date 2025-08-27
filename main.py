@@ -12,7 +12,7 @@ import aiohttp
 import json
 import yt_dlp
 from collections import deque
-FFMPEG_BINARY = "./ffmpeg/ffmpeg"
+FFMPEG_BINARY = "ffmpeg"
 
 # === Discord Bot Setup (MUST COME FIRST) ===
 intents = discord.Intents.all()
@@ -903,6 +903,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
