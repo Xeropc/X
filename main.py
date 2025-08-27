@@ -12,6 +12,7 @@ import aiohttp
 import json
 import yt_dlp
 from collections import deque
+FFMPEG_BINARY = "./ffmpeg/ffmpeg"
 
 # === Discord Bot Setup (MUST COME FIRST) ===
 intents = discord.Intents.all()
@@ -107,6 +108,14 @@ async def on_ready():
     await asyncio.sleep(2)  # tiny wait to avoid race conditions
     save_reputation_periodically.start()
     decay_reputation.start()
+
+    # Verify ffmpeg
+    import subprocess
+    try:
+        output = subprocess.check_output([FFMPEG_BINARY, "-version"])
+        print(f"🎵 FFmpeg is ready:\n{output.decode().splitlines()[0]}")
+    except Exception as e:
+        print(f"❌ FFmpeg check failed: {e}")
 
 # Increment reputation when a user sends a message
 @bot.event
@@ -211,7 +220,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data['entries'][0]
             
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), data=data)
+        return cls(discord.FFmpegPCMAudio(filename, executable=FFMPEG_BINARY, **FFMPEG_OPTIONS), data=data)
 
 # Music commands
 @bot.command()
@@ -894,6 +903,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
