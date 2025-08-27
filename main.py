@@ -10,6 +10,8 @@ import itertools
 import random
 import aiohttp
 import json
+import yt_dlp
+from collections import deque
 
 # === Discord Bot Setup (MUST COME FIRST) ===
 intents = discord.Intents.all()
@@ -44,12 +46,6 @@ MAX_REP = 1000          # Maximum reputation cap
 async def on_disconnect():
     print("Bot disconnecting - saving reputation data...")
     save_reputation()
-
-@bot.event
-async def close():
-    print("Bot closing - performing final save...")
-    save_reputation()
-    await bot.close()
 
 @bot.event
 async def on_error(event, *args, **kwargs):
@@ -179,6 +175,208 @@ async def status(ctx):
 async def ping(ctx):
     await ctx.message.delete()
     await ctx.send("I'm still awake and watching servers.", delete_after=4)
+
+# === MUSIC ===
+# Music player state
+music_queues = {}
+now_playing = {}
+player_tasks = {}
+FFMPEG_OPTIONS = {
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-vn -filter:a "volume=0.25"'
+}
+YTDL_OPTIONS = {
+    'format': 'bestaudio/best',
+    'extractaudio': True,
+    'audioformat': 'mp3',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'ytsearch',
+    'source_address': '0.0.0.0',
+}
+
+ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
+
+class YTDLSource(discord.PCMVolumeTransformer):
+    def __init__(self, source, *, data, volume=0.5):
+        super().__init__(source, volume)
+        self.data = data
+        self.title = data.get('title')
+        self.url = data.get('url')
+
+    @classmethod
+    async def from_url(cls, url, *, loop=None, stream=False):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+        
+        if 'entries' in data:
+            data = data['entries'][0]
+            
+        filename = data['url'] if stream else ytdl.prepare_filename(data)
+        return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), data=data)
+
+# Music commands
+@bot.command()
+async def join(ctx):
+    """Join the voice channel"""
+    await ctx.message.delete()
+    if not ctx.author.voice:
+        await ctx.send("❌ You need to be in a voice channel to use this command.", delete_after=7)
+        return
+    
+    channel = ctx.author.voice.channel
+    if ctx.voice_client is not None:
+        await ctx.voice_client.move_to(channel)
+    else:
+        await channel.connect()
+    
+    await ctx.send(f"✅ Joined {channel.name}", delete_after=7)
+
+@bot.command()
+async def leave(ctx):
+    """Leave the voice channel"""
+    await ctx.message.delete()
+    if ctx.voice_client is not None:
+        await ctx.voice_client.disconnect()
+        await ctx.send("✅ Left the voice channel", delete_after=7)
+    else:
+        await ctx.send("❌ I'm not in a voice channel.", delete_after=7)
+
+@bot.command()
+async def play(ctx, *, query):
+    """Play music from YouTube"""
+    await ctx.message.delete()
+    
+    # Ensure bot is in voice channel
+    if not ctx.author.voice:
+        await ctx.send("❌ You need to be in a voice channel to use this command.", delete_after=7)
+        return
+        
+    if ctx.voice_client is None:
+        await ctx.author.voice.channel.connect()
+    
+    # Get guild queue or create new one
+    if ctx.guild.id not in music_queues:
+        music_queues[ctx.guild.id] = deque()
+    
+    # Add to queue
+    try:
+        async with ctx.typing():
+            player = await YTDLSource.from_url(query, loop=bot.loop, stream=True)
+            music_queues[ctx.guild.id].append(player)
+            
+            if not ctx.voice_client.is_playing():
+                await play_next(ctx)
+            else:
+                await ctx.send(f"🎵 Added to queue: **{player.title}**", delete_after=10)
+                
+    except Exception as e:
+        print(f"Error playing music: {e}")
+        await ctx.send("❌ Could not play the requested audio.", delete_after=7)
+
+async def play_next(ctx):
+    if ctx.guild.id in music_queues and music_queues[ctx.guild.id]:
+        player = music_queues[ctx.guild.id].popleft()
+        
+        # Store what's currently playing
+        now_playing[ctx.guild.id] = player
+        
+        # Play the audio
+        ctx.voice_client.play(
+    player,
+    after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx.guild.id), bot.loop)
+)
+        
+        # Send playing message
+        await ctx.send(f"🎵 Now playing: **{player.title}**", delete_after=15)
+    else:
+        # Nothing left in queue
+        now_playing[ctx.guild.id] = None
+        await ctx.send("✅ Queue finished.", delete_after=10)
+
+@bot.command()
+async def skip(ctx):
+    """Skip the current song"""
+    await ctx.message.delete()
+    if ctx.voice_client is not None and ctx.voice_client.is_playing():
+        ctx.voice_client.stop()
+        await ctx.send("⏭️ Skipped current song", delete_after=7)
+    else:
+        await ctx.send("❌ Nothing is currently playing.", delete_after=7)
+
+@bot.command()
+async def pause(ctx):
+    """Pause the current song"""
+    await ctx.message.delete()
+    if ctx.voice_client is not None and ctx.voice_client.is_playing():
+        ctx.voice_client.pause()
+        await ctx.send("⏸️ Paused playback", delete_after=7)
+    else:
+        await ctx.send("❌ Nothing is currently playing.", delete_after=7)
+
+@bot.command()
+async def resume(ctx):
+    """Resume playback"""
+    await ctx.message.delete()
+    if ctx.voice_client is not None and ctx.voice_client.is_paused():
+        ctx.voice_client.resume()
+        await ctx.send("▶️ Resumed playback", delete_after=7)
+    else:
+        await ctx.send("❌ Playback is not paused.", delete_after=7)
+
+@bot.command()
+async def stop(ctx):
+    """Stop playback and clear queue"""
+    await ctx.message.delete()
+    if ctx.voice_client is not None:
+        if ctx.guild.id in music_queues:
+            music_queues[ctx.guild.id].clear()
+        ctx.voice_client.stop()
+        await ctx.send("⏹️ Stopped playback and cleared queue", delete_after=7)
+    else:
+        await ctx.send("❌ Nothing is currently playing.", delete_after=7)
+
+@bot.command()
+async def queue(ctx):
+    """Show the current queue"""
+    await ctx.message.delete()
+    if ctx.guild.id in music_queues and music_queues[ctx.guild.id]:
+        queue_list = []
+        for i, player in enumerate(list(music_queues[ctx.guild.id])[:5], 1):
+            queue_list.append(f"{i}. {player.title}")
+        
+        embed = discord.Embed(
+            title="🎵 Music Queue",
+            description="\n".join(queue_list),
+            color=discord.Color.blurple()
+        )
+        if len(music_queues[ctx.guild.id]) > 5:
+            embed.set_footer(text=f"And {len(music_queues[ctx.guild.id]) - 5} more...")
+        
+        await ctx.send(embed=embed, delete_after=15)
+    else:
+        await ctx.send("❌ The queue is empty.", delete_after=7)
+
+@bot.command()
+async def np(ctx):
+    """Show what's currently playing"""
+    await ctx.message.delete()
+    if ctx.guild.id in now_playing and now_playing[ctx.guild.id]:
+        player = now_playing[ctx.guild.id]
+        embed = discord.Embed(
+            title="🎵 Now Playing",
+            description=player.title,
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed, delete_after=15)
+    else:
+        await ctx.send("❌ Nothing is currently playing.", delete_after=7)
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -609,6 +807,21 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
                 ("🔊 $unmute @user", "Unmute a muted member", False),
                 ("💾 $save", "Manually save reputation data (optional)", False),
             ]
+        },
+        {  # ADDED COMMA HERE - this was the missing comma
+            "title": "🎵 Music Commands",
+            "description": "",
+            "fields": [
+                ("🎵 $play [song]", "Play music from YouTube", False),
+                ("⏭️ $skip", "Skip current song", False),
+                ("⏸️ $pause", "Pause playback", False),
+                ("▶️ $resume", "Resume playback", False),
+                ("⏹️ $stop", "Stop playback and clear queue", False),
+                ("📋 $queue", "Show current queue", False),
+                ("🎶 $np", "Show currently playing song", False),
+                ("🔊 $join", "Join voice channel", False),
+                ("🚪 $leave", "Leave voice channel", False)
+            ]
         }
     ]
     
@@ -665,7 +878,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
                 await message.delete()
             except:
                 pass
-
+    
 # === Start Everything ===
 keep_alive()
 
@@ -687,11 +900,3 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
-
-
-
-
-
-
-
-
