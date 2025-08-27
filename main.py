@@ -356,7 +356,7 @@ async def queue(ctx):
         await ctx.send("❌ The queue is empty.", delete_after=7)
 
 @bot.command()
-async def np(ctx):
+async def cp(ctx):
     """Show what's currently playing"""
     await ctx.message.delete()
     if ctx.guild.id in now_playing and now_playing[ctx.guild.id]:
@@ -752,13 +752,12 @@ async def guide(ctx):
     await ctx.send(embed=embed)
 
 @bot.command(name="cmds")
-async def cmds_list(ctx, page: int = 1, from_reaction: bool = False, message=None):
-    # Only delete the command message if this was typed manually
-    if not from_reaction:
-        try:
-            await ctx.message.delete()
-        except discord.NotFound:
-            pass
+async def cmds_list(ctx):
+    # Delete the original command message
+    try:
+        await ctx.message.delete()
+    except discord.NotFound:
+        pass
 
     # Define pages
     pages = [
@@ -795,7 +794,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False, message=Non
                 ("▶️ $resume", "Resume playback", False),
                 ("⏹️ $stop", "Stop playback and clear queue", False),
                 ("📋 $queue", "Show current queue", False),
-                ("🎶 $np", "Show currently playing song", False),
+                ("🎶 $cp", "Show currently playing song", False),
                 ("🔊 $join", "Join voice channel", False),
                 ("🚪 $leave", "Leave voice channel", False)
             ]
@@ -817,63 +816,72 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False, message=Non
         }
     ]
 
-    # Clamp page number
-    if page < 1 or page > len(pages):
-        page = 1
+    page = 1
+    message = await ctx.send(embed=discord.Embed())  # temporary embed
 
-    # Build embed
-    current_page = pages[page - 1]
-    embed = discord.Embed(
-        title=current_page["title"],
-        description=current_page["description"],
-        color=discord.Color.blurple()
-    )
+    while True:
+        # Clamp page
+        if page < 1:
+            page = 1
+        elif page > len(pages):
+            page = len(pages)
 
-    # Admin-only page warning
-    if page == 4 and not ctx.author.guild_permissions.administrator:
-        embed.description += " — You cannot use these commands"
+        # Build embed
+        current_page = pages[page - 1]
+        embed = discord.Embed(
+            title=current_page["title"],
+            description=current_page["description"],
+            color=discord.Color.blurple()
+        )
 
-    for name, value, inline in current_page["fields"]:
-        embed.add_field(name=name, value=value, inline=inline)
+        # Admin-only page warning
+        if page == 4 and not ctx.author.guild_permissions.administrator:
+            embed.description += " — You cannot use these commands"
 
-    footer_text = f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate"
-    if page == 1:
-        footer_text += " • 𝘮𝘢𝘥𝘦 𝘣𝘺 𝘹𝘦𝘳𝘰"
-    embed.set_footer(text=footer_text)
+        for name, value, inline in current_page["fields"]:
+            embed.add_field(name=name, value=value, inline=inline)
 
-    # Send or edit the embed
-    if from_reaction and message:
+        footer_text = f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate"
+        if page == 1:
+            footer_text += " • 𝘮𝘢𝘥𝘦 𝘣𝘺 𝘹𝘦𝘳𝘰"
+        embed.set_footer(text=footer_text)
+
+        # Edit message
         await message.edit(embed=embed)
-    else:
-        message = await ctx.send(embed=embed)
 
-    # Add navigation reactions
-    if len(pages) > 1:
-        if page > 1:
-            await message.add_reaction("◀️")
-        if page < len(pages):
-            await message.add_reaction("▶️")
-
-        def check(reaction, user):
-            return (
-                user == ctx.author
-                and str(reaction.emoji) in ["◀️", "▶️"]
-                and reaction.message.id == message.id
-            )
-
+        # Clear reactions and add navigation
         try:
-            reaction, user = await bot.wait_for("reaction_add", timeout=20.0, check=check)
-            if str(reaction.emoji) == "▶️" and page < len(pages):
-                await message.clear_reactions()
-                await cmds_list(ctx, page + 1, from_reaction=True, message=message)
-            elif str(reaction.emoji) == "◀️" and page > 1:
-                await message.clear_reactions()
-                await cmds_list(ctx, page - 1, from_reaction=True, message=message)
-        except asyncio.TimeoutError:
+            await message.clear_reactions()
+        except:
+            pass
+
+        if len(pages) > 1:
+            if page > 1:
+                await message.add_reaction("◀️")
+            if page < len(pages):
+                await message.add_reaction("▶️")
+
+            def check(reaction, user):
+                return (
+                    user == ctx.author
+                    and str(reaction.emoji) in ["◀️", "▶️"]
+                    and reaction.message.id == message.id
+                )
+
             try:
-                await message.clear_reactions()
-            except:
-                pass
+                reaction, user = await bot.wait_for("reaction_add", timeout=30.0, check=check)
+                if str(reaction.emoji) == "▶️":
+                    page += 1
+                elif str(reaction.emoji) == "◀️":
+                    page -= 1
+            except asyncio.TimeoutError:
+                try:
+                    await message.clear_reactions()
+                except:
+                    pass
+                break
+        else:
+            break
     
 # === Start Everything ===
 keep_alive()
@@ -896,5 +904,6 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
