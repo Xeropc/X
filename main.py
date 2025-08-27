@@ -788,10 +788,9 @@ async def cmds_list(ctx):
             "title": "🎵 Music Commands",
             "description": "",
             "fields": [
-                ("🎵 $play [song]", "Play music from YouTube", False),
+                ("▶️ $play [song]", "Play music from YouTube", False),
                 ("⏭️ $skip", "Skip current song", False),
                 ("⏸️ $pause", "Pause playback", False),
-                ("▶️ $resume", "Resume playback", False),
                 ("⏹️ $stop", "Stop playback and clear queue", False),
                 ("📋 $queue", "Show current queue", False),
                 ("🎶 $cp", "Show currently playing song", False),
@@ -904,6 +903,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
