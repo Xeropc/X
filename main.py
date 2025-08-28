@@ -557,7 +557,7 @@ async def guide(ctx):
         inline=False
     )
     
-    embed.set_footer(text="Use $cmds for a quick command list • Made by xero")
+    embed.set_footer(text="Use $cmds for a quick command list • 𝘮𝘢𝘥𝘦 𝘣𝘺 𝘹𝘦𝘳𝘰")
     
     await ctx.send(embed=embed)
 
@@ -636,7 +636,7 @@ async def cmds_list(ctx, page: int = 1, from_reaction: bool = False):
     
     footer_text = f"Page {page}/{len(pages)} • React with ◀️ ▶️ to navigate"
     if page == 1:  # Only add credit on first page
-        footer_text += " • 𝘮𝘢𝘥𝘦 𝘣𝘺 𝘹𝘦𝘳𝘰"
+        footer_text += " • ​🇵​​🇷​​🇴​​🇹​​🇪​​🇨​​🇹​​🇪​​🇩​ ​🇧​​🇾​ ​🇽​​🇪​​🇷​​🇴​"
         
     embed.set_footer(text=footer_text)
 
@@ -690,5 +690,6 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
