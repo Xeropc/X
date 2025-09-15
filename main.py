@@ -496,13 +496,16 @@ async def CJK(ctx):
     
     image_url = random.choice(cjk_images)
     quote = random.choice(cjk_quotes)
+
+    quote = f'"{quote}"'
     
     embed = discord.Embed(
-        title="In Remembrance of Charlie Kirk 🕊️🇺🇸",
-        description=f"{quote}\n\nPowered by Xero",
-        color=discord.Color.red()
+        title="In Remembrance of Charlie Kirk 🕊️ 🇺🇸",
+        description=quote,
+        color=0x8B0000  # Dark red
     )
     embed.set_image(url=image_url)
+    embed.set_footer(text="Powered by Xero")
     await ctx.send(embed=embed, delete_after=20)
 
 @bot.command()
@@ -723,6 +726,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
