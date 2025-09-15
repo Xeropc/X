@@ -472,6 +472,39 @@ async def meme(ctx):
     embed.set_footer(text="Powered by imgur")
     await ctx.send(embed=embed, delete_after=20)
 
+@bot.command(name="CJK")
+async def CJK(ctx):
+    """In remembrance of CJK"""
+    await ctx.message.delete()
+    # List of Charlie Kirk image URLs
+    cjk_images = [
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Charlie_Kirk_%26_Donald_Trump_%2853786991842%29.jpg/960px-Charlie_Kirk_%26_Donald_Trump_%2853786991842%29.jpg",
+        "https://a57.foxnews.com/static.foxnews.com/foxnews.com/content/uploads/2025/09/1920/1080/charlie-kirk-trump-vance-campaign.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Charlie_Kirk_%2854670963291%29.jpg/960px-Charlie_Kirk_%2854670963291%29.jpg",
+        "https://www.aljazeera.com/wp-content/uploads/2025/09/afp_68c2a997b715-1757587863.jpg"
+        # add more Charlie Kirk images here
+    ]
+
+    # Quote sayings by Charlie Kirk
+    cjk_quotes = [
+        "It’s not just intrabiblical evidence, but extrabiblical evidence that Jesus Christ was a real person. He lived a perfect life, he was crucified, died and rose on the third day, and he is Lord and God over all.",
+        "Jesus teaches us to stand firm for truth, even when it's unpopular.",
+        "Jesus defeated death so that you can live.",
+        "The Bible teaches there are only two genders, male and female. This is not a debate. Yet, we have a woke culture that is directly attacking the very created order that God established.",
+        "The Bible calls us to work and to be productive. 2 Thessalonians 3:10 says, 'If anyone is not willing to work, let him not eat.' This is the ultimate statement of personal responsibility that our welfare state has completely abandoned"
+    ]
+    
+    image_url = random.choice(cjk_images)
+    quote = random.choice(cjk_quotes)
+    
+    embed = discord.Embed(
+        title="In Remembrance of Charlie Kirk 🕊️🇺🇸",
+        description=f"{quote}\n\nPowered by Xero",
+        color=discord.Color.red()
+    )
+    embed.set_image(url=image_url)
+    await ctx.send(embed=embed, delete_after=20)
+
 @bot.command()
 async def x(ctx):
     await ctx.message.delete()
@@ -690,6 +723,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
