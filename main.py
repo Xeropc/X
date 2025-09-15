@@ -490,8 +490,8 @@ async def CJK(ctx):
         "It’s not just intrabiblical evidence, but extrabiblical evidence that Jesus Christ was a real person. He lived a perfect life, he was crucified, died and rose on the third day, and he is Lord and God over all.",
         "Jesus teaches us to stand firm for truth, even when it's unpopular.",
         "Jesus defeated death so that you can live.",
-        "The Bible teaches there are only two genders, male and female. This is not a debate. Yet, we have a woke culture that is directly attacking the very created order that God established.",
-        "The Bible calls us to work and to be productive. 2 Thessalonians 3:10 says, 'If anyone is not willing to work, let him not eat.' This is the ultimate statement of personal responsibility that our welfare state has completely abandoned"
+        "The Bible teaches there are only two genders, male and female, this is not a debate. We have a woke culture that is directly attacking the very created order that God established.",
+        "2 Thessalonians 3:10 says, 'If anyone is not willing to work, let him not eat.' This is the ultimate statement of personal responsibility that our welfare state has completely abandoned."
     ]
     
     image_url = random.choice(cjk_images)
@@ -506,7 +506,7 @@ async def CJK(ctx):
     )
     embed.set_image(url=image_url)
     embed.set_footer(text="Powered by Xero")
-    await ctx.send(embed=embed, delete_after=20)
+    await ctx.send(embed=embed, delete_after=45)
 
 @bot.command()
 async def x(ctx):
@@ -726,6 +726,7 @@ if not token:
     print("❌ ERROR: TOKEN environment variable not set! Please add it in Replit Secrets.")
 else:
     bot.run(token)
+
 
 
 
